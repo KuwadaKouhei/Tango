@@ -121,7 +121,7 @@
 | POC-01 Start + Cloudflare | `dev`、Workers preview、production buildが成功し、SSR画面が応答する | T01 **合格**（2026-08-20: `vite dev` / `vite build` / `vite preview`、`/` が HTML） |
 | POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 **合格**（2026-08-20: healthは JSON `{"status":"ok"}`、未知APIはJSON 404、`/` はHTML） |
 | POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live Google previewは未実施**（OAuth client と `.dev.vars` は人間設定） |
-| POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 |
+| POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 **コード側合格**（2026-08-20: CHECK、複合owner FK、batch rollback、履歴ありRESTRICT、2ユーザー隔離）。**preview D1への人手適用は未実施** |
 | POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T11 |
 | POC-06 翻訳候補 | 代表単語セットで候補品質、複数候補、遅延、料金を比較 | T08 |
 
@@ -148,3 +148,4 @@
 - 2026-08-20 初版作成
 - 2026-08-20 POC-01/02をT01で合格と記録
 - 2026-08-20 POC-03のコード側合格と live Google 未実施を記録
+- 2026-08-20 POC-04のコード側合格と preview D1 人手適用未実施を記録

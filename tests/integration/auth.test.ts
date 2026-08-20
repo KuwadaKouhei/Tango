@@ -15,6 +15,7 @@ describe('private API auth', () => {
         code: 'UNAUTHENTICATED',
         message: 'ログインが必要です。',
         requestId: expect.any(String),
+        details: {},
       },
     })
     expect(JSON.stringify(body)).not.toMatch(

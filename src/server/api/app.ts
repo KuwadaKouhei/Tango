@@ -1,11 +1,29 @@
 import { Hono } from 'hono'
 import { createAuth } from '../../infrastructure/auth/better-auth'
+import { AppError } from '../../platform/app-error'
+import { createWordRoutes } from '../../features/words/api/word-routes'
 import type { AuthBindings } from './bindings'
+import { handleApiError } from './error-handler'
 import type { AuthVariables } from './middleware/auth'
 import { requireAuth } from './middleware/auth'
+import { originMiddleware } from './middleware/origin'
+import type { RequestIdVariables } from './middleware/request-id'
+import { requestIdMiddleware } from './middleware/request-id'
+
+type ApiEnv = {
+  Bindings: AuthBindings
+  Variables: AuthVariables & RequestIdVariables
+}
 
 export const createApiApp = () => {
-  const app = new Hono<{ Bindings: AuthBindings; Variables: AuthVariables }>()
+  const app = new Hono<ApiEnv>()
+
+  app.use('*', requestIdMiddleware)
+  app.onError(handleApiError)
+  app.notFound((c) => {
+    const error = AppError.notFound()
+    return handleApiError(error, c)
+  })
 
   app.get('/api/v1/health', (c) => c.json({ status: 'ok' }))
 
@@ -14,46 +32,13 @@ export const createApiApp = () => {
     return auth.handler(c.req.raw)
   })
 
-  const privateV1 = new Hono<{
-    Bindings: AuthBindings
-    Variables: AuthVariables
-  }>()
+  const privateV1 = new Hono<ApiEnv>()
+  privateV1.use('*', originMiddleware)
   privateV1.use('*', requireAuth)
-  // T05で実データに置き換える。T02は認証後の単語一覧導線と401を先に固定する。
+  // T05で統計付き一覧に置き換える。T03は認証後の空一覧契約を維持する。
   privateV1.get('/words', (c) => c.json({ items: [], nextCursor: null }))
+  privateV1.route('/', createWordRoutes())
   app.route('/api/v1', privateV1)
-
-  app.notFound((c) =>
-    c.json(
-      {
-        error: {
-          code: 'NOT_FOUND',
-          message: '見つかりません。',
-        },
-      },
-      404,
-    ),
-  )
-
-  app.onError((error, c) => {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        route: c.req.path,
-        errorName: error.name,
-      }),
-    )
-
-    return c.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: '内部エラーが発生しました。',
-        },
-      },
-      500,
-    )
-  })
 
   return app
 }

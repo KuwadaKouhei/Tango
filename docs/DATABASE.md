@@ -1,6 +1,6 @@
 # DB設計: Tango MVP
 
-> 状態: **T02でBetter Auth schema生成済み。アプリテーブルとOQ-009は未着手。**
+> 状態: **T03でアプリテーブルmigration済み。OQ-009の削除方針は未決のままRESTRICT。**
 > 採用DB: Cloudflare D1（SQLite互換）
 > ORM/migration: Drizzle ORM / Drizzle Kit
 
@@ -15,7 +15,7 @@
 - 単語と複数意味の作成・置換更新はD1 `batch()`で原子的に行う。
 - 全所有データqueryに`user_id`を含める。
 - 統計は`test_results`から算出し、初期schemaに集計cacheを持たない。
-- 単語削除と履歴の関係はOQ-009が未決のため、初期案では履歴のあるwordを`RESTRICT`し、公開削除機能の実装前に最終方針を決める。
+- 単語削除と履歴の関係はOQ-009が未決のため、初期migrationは履歴のあるwordを`RESTRICT`し、公開DELETE endpointは作らない。
 
 ## 2. ER図
 
@@ -209,7 +209,7 @@ constraints/indexes:
 constraints:
 
 - `FOREIGN KEY (word_id, user_id) REFERENCES words(id, user_id) ON DELETE RESTRICT` — result ownerとword ownerの不一致をDBでも拒否する。
-- `judge_type != 'ai'`の場合、provider/model/promptをNULLにするのをapplication invariantとする。D1 CHECKへも反映するかはmigration PoCで検証する。
+- `judge_type != 'ai'`の場合、provider/model/promptをNULLにする。T03のmigrationでCHECK `test_results_ai_metadata` として二重化した。
 - AIの手動修正機能はMVP未採用のため、`ai_judgement`や`final_judgement`を作らない。採用時は監査履歴を含む別設計にする。
 
 indexes:
@@ -292,7 +292,7 @@ LIMIT ?;
 | soft delete word | 履歴・統計を保持 | 一覧scopeと保持期限が複雑 | `words.deleted_at`追加 |
 | resultへsnapshotしword参照をNULL化 | 履歴保持とhard delete | schema・表示ロジックが増える | nullable FK + term/meaning snapshot |
 
-初期migration候補は`RESTRICT`とし、履歴ありwordのDELETE endpointをOQ-009決定前に公開しない。決定後に本節・ER図・migrationを更新する。
+初期migrationは`RESTRICT`（`drizzle/0001_minor_wasp.sql`）。履歴ありwordのDELETE endpointはOQ-009決定前に公開しない。repositoryの`deleteOwned`は隔離証明と履歴なし削除のcascade確認にだけ使う。決定後に本節・ER図・migrationを更新する。
 
 ## 9. Migration・初期データ
 
@@ -334,3 +334,4 @@ LIMIT ?;
 
 - 2026-08-20 初版作成
 - 2026-08-20 T02で `auth@1.7.1` 生成の `user` / `session` / `account` / `verification` を反映
+- 2026-08-20 T03で `words` / `word_meanings` / `test_results` と `0001_minor_wasp` を追加。OQ-009は未決のままRESTRICT
