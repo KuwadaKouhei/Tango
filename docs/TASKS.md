@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T01 作業中（feature/T01-platform-slice）。人間merge後に次タスクへ進む。**
+> 状態: **T01 PR中（feature/T01-platform-slice）。人間review/merge後に次タスクへ進む。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -18,7 +18,7 @@
 
 | ID | タイトル | 受け入れ条件 | 依存 | 意思決定 | branch | 状態 |
 |---|---|---|---|---|---|---|
-| T01 | Cloudflare上で動く最小縦スライス | 技術PoC | なし | OQ-013,014 | `feature/T01-platform-slice` | 🚧作業中 |
+| T01 | Cloudflare上で動く最小縦スライス | 技術PoC | なし | OQ-013,014 | `feature/T01-platform-slice` | 🟡PR中 |
 | T02 | Googleログインと保護画面 | AC-001,003 | T01 | OAuth環境設定 | `feature/T02-google-auth` | ⬜未着手 |
 | T03 | D1 schema・migration・所有者分離基盤 | AC-003,009 | T01,T02 | OQ-009初期方針確認 | `feature/T03-d1-ownership` | ⬜未着手 |
 | T04 | 複数意味・ヒント付き単語登録 | AC-002,006 | T03 | OQ-008,018 | `feature/T04-word-create` | ⬜未着手 |
@@ -272,3 +272,4 @@ OQ-010の検索、重複警告、終了結果、間違い再テスト、AI手動
 
 - 2026-08-20 初版作成
 - 2026-08-20 T01を作業中へ更新。OQ-013/014/016/017は決定済み
+- 2026-08-20 T01をPR中へ更新
