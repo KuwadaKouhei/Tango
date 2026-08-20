@@ -123,3 +123,13 @@
 - OQ-016/017: 承認済み。
 - T01: POC-01/02とversion固定をこのタスク内で完了させる。
 - 各タスク前: TASKSの意思決定列にあるOQ。
+
+## Cursor Cloud specific instructions
+
+- 依存はupdate scriptの `pnpm install --frozen-lockfile` で反映済み。手動再インストールは通常不要。
+- Node/pnpm版は `package.json` の `engines` / `packageManager`（Node>=22.12.0, pnpm 11.22.0）に従う。VMは既に満たしている。
+- 標準コマンドは `package.json` scripts をそのまま使う: `pnpm dev`（Vite dev、ポート3000）、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm build`。存在しないコマンドを推測しない。
+- dev serverは `pnpm dev` で `http://localhost:3000` に立ち上がる。長時間プロセスなのでtmux等のバックグラウンドで起動し、`install`フェーズには置かない。
+- 動作確認の要点: Start画面は `/`、Hono APIは `/api/v1/health`（`{"status":"ok"}`）。`/api/*` はHono、それ以外はTanStack Startへ分岐する（`src/server.ts`）。
+- test（`pnpm test` = `vitest run`）はCloudflare Workers poolで走り、Startの仮想module回避のため `wrangler.test.jsonc` が `tests/workers/dispatch-worker.ts` を指す（`docs/DIRECTORY_STRUCTURE.md` 参照）。実Start entryではない点に注意。
+- `routeTree.gen.ts` と `worker-configuration.d.ts` は生成物。typecheckはこれらに依存するが手編集しない。
