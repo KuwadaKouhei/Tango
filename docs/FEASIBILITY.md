@@ -120,7 +120,7 @@
 |---|---|---|
 | POC-01 Start + Cloudflare | `dev`、Workers preview、production buildが成功し、SSR画面が応答する | T01 **合格**（2026-08-20: `vite dev` / `vite build` / `vite preview`、`/` が HTML） |
 | POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 **合格**（2026-08-20: healthは JSON `{"status":"ok"}`、未知APIはJSON 404、`/` はHTML） |
-| POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 |
+| POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live Google previewは未実施**（OAuth client と `.dev.vars` は人間設定） |
 | POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 |
 | POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T11 |
 | POC-06 翻訳候補 | 代表単語セットで候補品質、複数候補、遅延、料金を比較 | T08 |
@@ -128,7 +128,7 @@
 ## 6. 技術比較と推奨
 
 - **ホスティング**: 要件でCloudflareが決定済み。Startの公式Cloudflare手順を第一候補にし、RC統合が失敗した場合だけHono Worker + SPA等への差し戻しを検討する。
-- **認証**: Better Authが決定済み。D1 first-class supportかDrizzle adapterのどちらが採用バージョンで安定するかをPOC-03で比較する。
+- **認証**: Better Authが決定済み。T02で `@better-auth/drizzle-adapter`（`transaction: false`）を採用し、D1 native adapterは使わない。live Google loginは人間がOAuth clientを設定してpreview確認する。
 - **AI/翻訳**: Workers AIを最初の比較対象とするが、ポートを固定しない。品質または料金条件を満たさなければDeepL、Google Translation、他LLMへ交換する。
 - **テスト**: Node上だけのVitestではWorkers固有差を見逃すため、CloudflareのWorkers Vitest integrationを採用する。
 
@@ -147,3 +147,4 @@
 
 - 2026-08-20 初版作成
 - 2026-08-20 POC-01/02をT01で合格と記録
+- 2026-08-20 POC-03のコード側合格と live Google 未実施を記録

@@ -8,4 +8,16 @@
   "observability": {
     "enabled": true,
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tango",
+      // local/preview用の仮ID。本番D1は `wrangler d1 create tango` の実IDへ置き換える。
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "drizzle",
+    },
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "http://localhost:3000",
+  },
 }

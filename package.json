@@ -21,11 +21,17 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "auth:generate": "auth generate --config src/infrastructure/auth/better-auth.cli.ts --output src/infrastructure/db/schema/auth.generated.ts -y",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply tango --local"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "1.7.1",
     "@tanstack/react-router": "1.170.31",
     "@tanstack/react-start": "1.168.48",
+    "better-auth": "1.7.1",
+    "drizzle-orm": "0.45.2",
     "hono": "4.13.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -39,6 +45,8 @@
     "@types/react": "19.2.8",
     "@types/react-dom": "19.2.4",
     "@vitejs/plugin-react": "6.1.0",
+    "auth": "1.7.1",
+    "drizzle-kit": "0.31.10",
     "eslint": "10.8.1",
     "prettier": "3.9.6",
     "typescript": "6.0.2",

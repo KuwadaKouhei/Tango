@@ -1,2 +1,8 @@
 # Copy to `.dev.vars`. Real secrets must never be committed.
-# T01 has no required secrets. T02 will add Google OAuth variable names only.
+# Google Cloud Console の Authorized redirect URI 例:
+#   http://localhost:3000/api/auth/callback/google
+# 値はチャットやGitへ貼らない。
+BETTER_AUTH_SECRET=replace-me
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=replace-me
+GOOGLE_CLIENT_SECRET=replace-me

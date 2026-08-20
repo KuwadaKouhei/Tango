@@ -1,6 +1,6 @@
 # DB設計: Tango MVP
 
-> 状態: **レビュー待ち／認証schema生成とOQ-009決定前**
+> 状態: **T02でBetter Auth schema生成済み。アプリテーブルとOQ-009は未着手。**
 > 採用DB: Cloudflare D1（SQLite互換）
 > ORM/migration: Drizzle ORM / Drizzle Kit
 
@@ -19,17 +19,17 @@
 
 ## 2. ER図
 
-`AUTH_USER`はBetter Auth生成user tableを表す**概念上の別名**であり、実際のtable/column名はT02で生成されたschemaへ置き換える。
+`user` は Better Auth CLI（`auth@1.7.1`）が生成した認証ユーザーテーブルである。アプリテーブルの所有者FKは `user.id` を参照する。
 
 ```mermaid
 erDiagram
-    AUTH_USER ||--o{ WORD : owns
-    AUTH_USER ||--o{ TEST_RESULT : answers
+    USER ||--o{ WORD : owns
+    USER ||--o{ TEST_RESULT : answers
     WORD ||--|{ WORD_MEANING : has
     WORD ||--o{ TEST_RESULT : receives
 
-    AUTH_USER {
-        string id PK "Better Auth generated user ID"
+    USER {
+        string id PK "Better Auth user.id"
     }
     WORD {
         string id PK
@@ -68,17 +68,80 @@ erDiagram
 
 ### 3.1 Better Auth管理テーブル
 
-役割: user、session、OAuth account、verification等をBetter Authが管理する。
+役割: user、session、OAuth account、verificationをBetter Authが管理する。物理名は `better-auth@1.7.1` / `auth@1.7.1 generate` の出力であり、手で推測・改変していない。生成物は `src/infrastructure/db/schema/auth.generated.ts` と `drizzle/0000_calm_lady_deathstrike.sql`。
 
 設計ルール:
 
-1. `better-auth@<locked-version>` と採用adapterを構成する。
-2. `npx auth@latest generate`を盲目的に使わず、lockしたCLI/versionでschemaを生成する。
-3. 生成されたDrizzle schemaとSQL migrationをレビューし、本書の概念`AUTH_USER.id`を実名へ更新する。
-4. Google OAuthに不要なplugin/tableを追加しない。
-5. 認証schemaの手修正が必要なら、Better Authの期待するmodel/field mappingも同時に更新する。
+1. `better-auth@1.7.1` と `@better-auth/drizzle-adapter@1.7.1` を構成する。
+2. `npx auth@latest generate`を盲目的に使わず、lockした `auth@1.7.1` でschemaを生成する。
+3. Google OAuthに不要なplugin/tableを追加しない。
+4. 認証schemaの手修正が必要なら、Better Authの期待するmodel/field mappingも同時に更新する。
+5. アプリテーブルの時刻はepoch millisecondsのintegerで統一する。認証テーブルはCLI出力どおり `timestamp_ms`（SQL integer + `unixepoch('subsecond')`）を維持し、アプリ側でBetter Auth内部表現へ変換しない。
 
-生成前のため物理カラム一覧はここに記載しない。この未記載は設計漏れではなく、原典の「手作業で推測しない」を守るための意図的な保留である。
+#### `user`
+
+| column | D1/Drizzle型 | NULL | constraint/key | 説明 |
+|---|---|---:|---|---|
+| `id` | `text` | No | PK | Better Auth生成のユーザーID。アプリの所有者FK |
+| `name` | `text` | No |  | Googleプロフィール名 |
+| `email` | `text` | No | UNIQUE | ログイン識別 |
+| `email_verified` | `integer` (boolean) | No | DEFAULT false | Google連携時の検証状態 |
+| `image` | `text` | Yes |  | プロフィール画像URL |
+| `created_at` | `integer` (timestamp_ms) | No | DEFAULT unixepoch('subsecond') | 作成日時 |
+| `updated_at` | `integer` (timestamp_ms) | No | DEFAULT unixepoch('subsecond') | 更新日時 |
+
+#### `session`
+
+| column | D1/Drizzle型 | NULL | constraint/key | 説明 |
+|---|---|---:|---|---|
+| `id` | `text` | No | PK | session ID |
+| `expires_at` | `integer` (timestamp_ms) | No |  | 期限 |
+| `token` | `text` | No | UNIQUE | Cookieと対応するsession token |
+| `created_at` | `integer` (timestamp_ms) | No | DEFAULT unixepoch('subsecond') | 作成日時 |
+| `updated_at` | `integer` (timestamp_ms) | No |  | 更新日時 |
+| `ip_address` | `text` | Yes |  | 任意 |
+| `user_agent` | `text` | Yes |  | 任意 |
+| `user_id` | `text` | No | FK → `user.id` ON DELETE CASCADE | 所有者 |
+
+indexes: `session_userId_idx` on (`user_id`)。
+
+#### `account`
+
+Google OAuthの連携アカウント。`password` はCLI出力に含まれるが、MVPのGoogleログインでは使わない。
+
+| column | D1/Drizzle型 | NULL | constraint/key | 説明 |
+|---|---|---:|---|---|
+| `id` | `text` | No | PK | account ID |
+| `issuer` | `text` | No | UNIQUE with `account_id` | IdP issuer |
+| `account_id` | `text` | No | UNIQUE with `issuer` | provider側アカウントID |
+| `provider_id` | `text` | No |  | 例: `google` |
+| `user_id` | `text` | No | FK → `user.id` ON DELETE CASCADE | アプリユーザー |
+| `access_token` | `text` | Yes |  | OAuth access token。ログ禁止 |
+| `refresh_token` | `text` | Yes |  | OAuth refresh token。ログ禁止 |
+| `id_token` | `text` | Yes |  | OAuth ID token。ログ禁止 |
+| `access_token_expires_at` | `integer` (timestamp_ms) | Yes |  | access token期限 |
+| `refresh_token_expires_at` | `integer` (timestamp_ms) | Yes |  | refresh token期限 |
+| `scope` | `text` | Yes |  | 付与scope |
+| `password` | `text` | Yes |  | パスワード認証用。GoogleのみのMVPでは未使用 |
+| `created_at` | `integer` (timestamp_ms) | No | DEFAULT unixepoch('subsecond') | 作成日時 |
+| `updated_at` | `integer` (timestamp_ms) | No |  | 更新日時 |
+
+indexes: `account_issuer_accountId_uidx` unique on (`issuer`,`account_id`)、`account_userId_idx` on (`user_id`)。
+
+#### `verification`
+
+メール検証やOAuth中間stateなど、Better Authが短命トークンを置くテーブル。
+
+| column | D1/Drizzle型 | NULL | constraint/key | 説明 |
+|---|---|---:|---|---|
+| `id` | `text` | No | PK | verification ID |
+| `identifier` | `text` | No |  | 検証対象の識別子 |
+| `value` | `text` | No |  | 検証値。ログ禁止 |
+| `expires_at` | `integer` (timestamp_ms) | No |  | 期限 |
+| `created_at` | `integer` (timestamp_ms) | No | DEFAULT unixepoch('subsecond') | 作成日時 |
+| `updated_at` | `integer` (timestamp_ms) | No | DEFAULT unixepoch('subsecond') | 更新日時 |
+
+indexes: `verification_identifier_idx` on (`identifier`)。
 
 ### 3.2 `words`
 
@@ -87,7 +150,7 @@ erDiagram
 | column | D1/Drizzle型 | NULL | constraint/key | 説明 |
 |---|---|---:|---|---|
 | `id` | `text` | No | PK | application生成opaque ID |
-| `user_id` | `text` | No | FK → Better Auth user ID | 所有ユーザー |
+| `user_id` | `text` | No | FK → `user.id` | 所有ユーザー |
 | `term` | `text` | No | CHECK trim後長さ > 0 | 表示用原文 |
 | `normalized_term` | `text` | No | CHECK length > 0 | NFKC等の決定済み規則による検索値 |
 | `hint` | `text` | Yes | 文字数はOQ-018 | 任意ヒント。空文字はNULLへ正規化 |
@@ -132,7 +195,7 @@ constraints/indexes:
 | column | D1/Drizzle型 | NULL | constraint/key | 説明 |
 |---|---|---:|---|---|
 | `id` | `text` | No | PK | result ID |
-| `user_id` | `text` | No | FK → Better Auth user ID | 回答ユーザー |
+| `user_id` | `text` | No | FK → `user.id` | 回答ユーザー |
 | `word_id` | `text` | No | FK → `words.id` | 出題単語 |
 | `answer` | `text` | No | CHECK trim後長さ > 0 | ユーザー入力原文 |
 | `is_correct` | `integer` | No | CHECK IN (0,1) | 最終正誤 |
@@ -157,9 +220,9 @@ indexes:
 
 ## 4. リレーションとカーディナリティ
 
-- Better Auth user 1 : N words。userは0件のwordを持てる。
+- Better Auth `user` 1 : N words。userは0件のwordを持てる。
 - word 1 : N word_meanings。アプリ上は必ず1件以上。
-- Better Auth user 1 : N test_results。
+- Better Auth `user` 1 : N test_results。
 - word 1 : N test_results。未回答wordは0件。
 - `test_results.user_id`と`word_id`は複合FKで同一所有者を保証する。
 
@@ -270,3 +333,4 @@ LIMIT ?;
 ## 12. 更新履歴
 
 - 2026-08-20 初版作成
+- 2026-08-20 T02で `auth@1.7.1` 生成の `user` / `session` / `account` / `verification` を反映
