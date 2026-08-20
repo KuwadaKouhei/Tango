@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T02でauth配下とD1 migration配置を反映済み**
+> 状態: **T03でplatform、app schema、ownership testを反映済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -56,13 +56,12 @@ Tango/
 │   │   ├── words/
 │   │   │   ├── domain/
 │   │   │   │   ├── normalize-term.ts
+│   │   │   │   ├── normalize-meaning.ts
+│   │   │   │   ├── prepare-word.ts
 │   │   │   │   ├── word.ts
 │   │   │   │   └── word-repository.ts
 │   │   │   ├── application/
-│   │   │   │   ├── create-word.ts
-│   │   │   │   ├── list-words.ts
-│   │   │   │   ├── update-word.ts
-│   │   │   │   └── delete-word.ts
+│   │   │   │   └── manage-word.ts
 │   │   │   ├── api/
 │   │   │   │   ├── word-routes.ts
 │   │   │   │   └── word-schemas.ts
@@ -118,9 +117,7 @@ Tango/
 │   ├── platform/
 │   │   ├── app-error.ts
 │   │   ├── clock.ts
-│   │   ├── ids.ts
-│   │   ├── pagination.ts
-│   │   └── result.ts
+│   │   └── ids.ts
 │   ├── routes/
 │   │   ├── __root.tsx
 │   │   ├── index.tsx
@@ -155,6 +152,9 @@ Tango/
 │   ├── integration/
 │   │   ├── health.test.ts
 │   │   ├── auth.test.ts
+│   │   ├── error-contract.test.ts
+│   │   ├── ownership.test.ts
+│   │   ├── schema-constraints.test.ts
 │   │   ├── word-api.test.ts
 │   │   ├── study-api.test.ts
 │   │   └── translation-api.test.ts
@@ -296,3 +296,4 @@ composition-root -> application + infrastructure
 - 2026-08-20 初版作成
 - 2026-08-20 T01公式scaffoldとの差（alias、styles.css、test worker、wrangler main）を反映
 - 2026-08-20 T02でauth配置、D1 migration直下、env.d.ts、public.tsの例外を反映
+- 2026-08-20 T03でapp schema、AppError、ownership/error contract testを反映

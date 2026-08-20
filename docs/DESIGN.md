@@ -1,6 +1,6 @@
 # 設計: Tango MVP
 
-> 状態: **思想承認済み。Worker entryはT01、Google認証はT02で確認済み。**
+> 状態: **思想承認済み。Worker entryはT01、Google認証はT02、所有者分離基盤はT03で確認済み。**
 > 入力: `REQUIREMENTS.md`、`FEASIBILITY.md`、`philosophy/PLAN_PHILOSOPHY.md`、`TECH_STACK.md`
 > 未決事項は `OPEN_QUESTIONS.md` を参照し、本文の暫定案を確定仕様として扱わない。
 
@@ -185,7 +185,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 | POST | `/api/v1/words` | 必須 | 単語と1件以上の意味を原子的に作成 |
 | GET | `/api/v1/words/:wordId` | 必須 | 所有単語の詳細 |
 | PUT | `/api/v1/words/:wordId` | 必須 | 単語・意味・ヒントを原子的に置換更新 |
-| DELETE | `/api/v1/words/:wordId` | 必須 | 削除。履歴方針OQ-009決定後に実装 |
+| DELETE | `/api/v1/words/:wordId` | 必須 | 削除。履歴方針OQ-009決定後に実装。T03では公開しない |
 | POST | `/api/v1/translation-candidates` | 必須 | DB保存せず日本語候補を返す |
 | POST | `/api/v1/study/questions` | 必須 | modeに従い次の問題を1件返す |
 | GET | `/api/v1/study/questions/:wordId/hint` | 必須 | 所有確認後にヒントを返す |
@@ -387,6 +387,8 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 - repository queryは必ず`WHERE id = ? AND user_id = ?`または所有者scopeを含める。
 - 将来拡張用token/CORSをMVPへ先回り実装しない。
 - secretは `.dev.vars`（local）またはWorkers secret。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけを置き、OAuth secretは置かない。
+- 共通errorは `AppError`。`requestId` は `cf-ray` または `req_`+UUID。公開errorにSQL/stack/secretを含めない。
+- mutation（POST/PUT/PATCH/DELETE）は `BETTER_AUTH_URL` と `Origin` を照合し、不一致なら `403 ORIGIN_NOT_ALLOWED`。GETはOrigin不要。
 
 ### 7.2 CSRF / CORS
 
@@ -432,10 +434,11 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ## 9. 設計思想からの逸脱
 
-T02時点の意図的な限定:
+T03時点の意図的な限定:
 
-- アプリmutation用のOrigin middlewareはT03へ先送りする。T02のmutationはBetter Auth handlerのみで、`trustedOrigins` で Origin を検証する。
-- `GET /api/v1/words` は空一覧stub。単語CRUDはT05。
+- `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
+- `GET /api/v1/words` は空一覧stub。単語CRUDの画面はT04/T05。T03はPOST/GET by id/PUTのAPI基盤とrepository隔離を先に証明する。
+- 公開DELETEはOQ-009決定まで作らない。履歴ありwordはDB `RESTRICT`。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 
@@ -451,3 +454,4 @@ T02時点の意図的な限定:
 - 2026-08-20 初版作成
 - 2026-08-20 POC-02合格によりWorker entryのHono分岐を確定。health応答形を追記
 - 2026-08-20 T02でGoogle OAuth、session Cookie、保護layout、private API 401を反映
+- 2026-08-20 T03でAppError、requestId、Origin、words/test_results schema、所有者隔離を反映

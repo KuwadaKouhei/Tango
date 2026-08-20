@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T02（Googleログインと保護画面）作業中。ブランチは `feature/T02-google-auth`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T03（D1 schema・所有者分離基盤）作業中。ブランチは `feature/T03-d1-ownership`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -121,6 +121,6 @@
 ## 現在の必須レビュー項目
 
 - OQ-016/017: 承認済み。
-- T01: マージ済み。
-- T02: POC-03のコード側（未認証401、auth route、cookie）と Better Auth/Drizzle のversion固定。live Google previewは人間が `.dev.vars` 設定後に確認する。
+- T01/T02: マージ済み。
+- T03: POC-04のコード側（FK、CHECK、batch rollback、2ユーザー隔離）。OQ-009は未決のままRESTRICT。公開DELETEなし。preview D1適用は人間確認。
 - 各タスク前: TASKSの意思決定列にあるOQ。

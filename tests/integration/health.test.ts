@@ -28,6 +28,7 @@ describe('request dispatch', () => {
         code: 'UNAUTHENTICATED',
         message: 'ログインが必要です。',
         requestId: expect.any(String),
+        details: {},
       },
     })
   })
