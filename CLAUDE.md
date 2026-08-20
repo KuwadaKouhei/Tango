@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T03（D1 schema・所有者分離基盤）作業中。ブランチは `feature/T03-d1-ownership`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T04（複数意味・ヒント付き単語登録）作業中。ブランチは `feature/T04-word-create`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -121,6 +121,6 @@
 ## 現在の必須レビュー項目
 
 - OQ-016/017: 承認済み。
-- T01/T02: マージ済み。
-- T03: POC-04のコード側（FK、CHECK、batch rollback、2ユーザー隔離）。OQ-009は未決のままRESTRICT。公開DELETEなし。preview D1適用は人間確認。
+- T01〜T03: マージ済み。
+- T04: 登録画面と複数意味・hint。OQ-008/018は未決。上限は初期guardrail候補のみ。
 - 各タスク前: TASKSの意思決定列にあるOQ。

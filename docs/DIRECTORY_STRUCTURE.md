@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T03でplatform、app schema、ownership testを反映済み**
+> 状態: **T04で単語登録画面を反映済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -57,6 +57,7 @@ Tango/
 │   │   │   ├── domain/
 │   │   │   │   ├── normalize-term.ts
 │   │   │   │   ├── normalize-meaning.ts
+│   │   │   │   ├── input-limits.ts
 │   │   │   │   ├── prepare-word.ts
 │   │   │   │   ├── word.ts
 │   │   │   │   └── word-repository.ts
@@ -66,9 +67,8 @@ Tango/
 │   │   │   │   ├── word-routes.ts
 │   │   │   │   └── word-schemas.ts
 │   │   │   ├── ui/
-│   │   │   │   ├── word-card.tsx
-│   │   │   │   ├── word-form.tsx
-│   │   │   │   └── word-queries.ts
+│   │   │   │   ├── create-word-request.ts
+│   │   │   │   └── word-create-form.tsx
 │   │   │   └── public.ts
 │   │   ├── translation/
 │   │   │   ├── domain/
@@ -297,3 +297,4 @@ composition-root -> application + infrastructure
 - 2026-08-20 T01公式scaffoldとの差（alias、styles.css、test worker、wrangler main）を反映
 - 2026-08-20 T02でauth配置、D1 migration直下、env.d.ts、public.tsの例外を反映
 - 2026-08-20 T03でapp schema、AppError、ownership/error contract testを反映
+- 2026-08-20 T04で `/words/new` と word-create-form を反映

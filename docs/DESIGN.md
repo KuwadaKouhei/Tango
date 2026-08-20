@@ -223,7 +223,7 @@ POST /api/v1/words
 }
 ```
 
-入力上限はOQ-018で確定する。`meanings`は空配列を拒否し、空白だけのmeaningも拒否する。
+入力上限はOQ-018未決のため、初期guardrail候補（term 100、meaning 200、意味20件、hint 500）を防御値としてだけ適用する。`meanings`は空配列を拒否し、空白だけのmeaningも拒否する。request bodyに`userId`は無い。
 
 #### 翻訳候補
 
@@ -437,7 +437,7 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 T03時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
-- `GET /api/v1/words` は空一覧stub。単語CRUDの画面はT04/T05。T03はPOST/GET by id/PUTのAPI基盤とrepository隔離を先に証明する。
+- `GET /api/v1/words` は空一覧stub。T04は `/words/new` からPOSTし、成功画面で登録内容を再表示する。統計は出さない。
 - 公開DELETEはOQ-009決定まで作らない。履歴ありwordはDB `RESTRICT`。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
@@ -455,3 +455,4 @@ T03時点の意図的な限定:
 - 2026-08-20 POC-02合格によりWorker entryのHono分岐を確定。health応答形を追記
 - 2026-08-20 T02でGoogle OAuth、session Cookie、保護layout、private API 401を反映
 - 2026-08-20 T03でAppError、requestId、Origin、words/test_results schema、所有者隔離を反映
+- 2026-08-20 T04で単語登録画面と複数意味・ヒント保存を反映。OQ-018は未決のままguardrail候補を適用
