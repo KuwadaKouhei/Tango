@@ -1,14 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { getCurrentSession } from '#/features/auth/application/get-session'
 
-export const Route = createFileRoute('/')({ component: Home })
-
-function Home() {
-  return (
-    <main>
-      <h1>Tango</h1>
-      <p>
-        単語学習アプリの開始画面です。Workers上で応答できていることを確認するための最小画面です。
-      </p>
-    </main>
-  )
-}
+export const Route = createFileRoute('/')({
+  beforeLoad: async () => {
+    const session = await getCurrentSession()
+    throw redirect({ to: session ? '/words' : '/login' })
+  },
+})

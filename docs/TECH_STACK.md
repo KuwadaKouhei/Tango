@@ -1,7 +1,7 @@
 # 技術スタック選定: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **T01でlockfile固定済み（OQ-013/OQ-014）**
+> 状態: **T02でBetter Auth / Drizzleのversionをlockfileへ追加済み（OQ-013/OQ-014）**
 > 要件で指定された中核スタックを尊重し、公式CLIとnpmレジストリで互換セットを確認した。以後の更新は独立PRでbuild/testを再実行する。
 
 ## 1. 選定方針
@@ -59,8 +59,13 @@
 | ESLint / Prettier | 10.8.1 / 3.9.6 | `@tanstack/eslint-config` 0.4.0 が ESLint 10 を要求 |
 | `@tanstack/eslint-config` | 0.4.0 | 公式CLI toolchain |
 | `@tanstack/router-cli` | 1.167.32 | `tsr generate` |
+| `better-auth` | 1.7.1 | Google social provider。D1はDrizzle adapter経由 |
+| `@better-auth/drizzle-adapter` | 1.7.1 | D1に対話的transactionがないため `transaction: false` |
+| `auth`（CLI） | 1.7.1 | schema生成。`@better-auth/cli` は 1.7 系を公開していない |
+| `drizzle-orm` | 0.45.2 | D1 / Better Auth schema |
+| `drizzle-kit` | 0.31.10 | SQL migration生成。出力先は `drizzle/` |
 
-Zod / Better Auth / Drizzle / Playwright / TanStack Query はT01では未導入。各タスクで追加し、この表へ exact versionを追記する。
+Zod / Playwright / TanStack Query は未導入。各タスクで追加し、この表へ exact versionを追記する。
 
 T01で確認した公式scaffoldとの差:
 
@@ -118,6 +123,8 @@ T01で確認した公式scaffoldとの差:
 | 独自OAuth | 実装可能 | 任意 | 高リスク | 不採用 |
 
 採用理由: 明示要件であり、Google social providerとD1/Drizzleの公式経路がある。認証schemaはCLI生成結果をversion管理する。
+
+T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、認証も `@better-auth/drizzle-adapter` に揃えた。Better AuthのD1 native adapterは使わない。D1は対話的transactionを持たないので adapter に `transaction: false` を渡す。
 
 出典: [Better Auth OAuth](https://better-auth.com/docs/concepts/oauth)、[Drizzle adapter](https://better-auth.com/docs/adapters/drizzle)、[D1 support](https://better-auth.com/blog/1-5)
 
@@ -177,3 +184,4 @@ T01で確認した公式scaffoldとの差:
 
 - 2026-08-20 公式情報・npmスナップショットに基づく初版作成
 - 2026-08-20 T01でPOC-01/02合格後のlockfile固定値を反映
+- 2026-08-20 T02で Better Auth 1.7.1 / Drizzle 0.45.2 / drizzle-kit 0.31.10 を固定

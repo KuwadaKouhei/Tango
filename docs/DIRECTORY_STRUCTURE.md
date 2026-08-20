@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T01でscaffold差を反映済み**
+> 状態: **T02でauth配下とD1 migration配置を反映済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -36,8 +36,8 @@ Tango/
 │   ├── DIRECTORY_STRUCTURE.md
 │   └── TASKS.md
 ├── drizzle/
-│   ├── migrations/
-│   └── meta/                          # Drizzle Kit生成物
+│   ├── 0000_calm_lady_deathstrike.sql # T02 Better Auth。Drizzle Kit生成
+│   └── meta/                          # Drizzle Kit生成物。手編集禁止
 ├── public/
 │   ├── favicon.svg
 │   └── manifest.webmanifest
@@ -49,9 +49,10 @@ Tango/
 │   ├── features/
 │   │   ├── auth/
 │   │   │   ├── application/
-│   │   │   ├── api/
+│   │   │   │   └── get-session.ts     # Web redirect用。public.tsへ出さない
 │   │   │   ├── ui/
-│   │   │   └── public.ts
+│   │   │   │   └── auth-client.ts
+│   │   │   └── public.ts              # client-safe。authClientのみ
 │   │   ├── words/
 │   │   │   ├── domain/
 │   │   │   │   ├── normalize-term.ts
@@ -98,6 +99,7 @@ Tango/
 │   ├── infrastructure/
 │   │   ├── auth/
 │   │   │   ├── better-auth.ts
+│   │   │   ├── better-auth.cli.ts     # `auth generate` 専用。secretなし
 │   │   │   └── session-adapter.ts
 │   │   ├── db/
 │   │   │   ├── drizzle.ts
@@ -144,6 +146,7 @@ Tango/
 │   │   │       ├── rate-limit.ts
 │   │   │       └── request-id.ts
 │   │   └── composition-root.ts
+│   ├── env.d.ts                       # .dev.vars の secret 型。wrangler types と merge
 │   ├── styles.css                     # T01公式blank。カード色追加時に分割してよい
 │   ├── router.tsx
 │   ├── routeTree.gen.ts               # TanStack生成。手編集禁止
@@ -151,7 +154,7 @@ Tango/
 ├── tests/
 │   ├── integration/
 │   │   ├── health.test.ts
-│   │   ├── auth-isolation.test.ts
+│   │   ├── auth.test.ts
 │   │   ├── word-api.test.ts
 │   │   ├── study-api.test.ts
 │   │   └── translation-api.test.ts
@@ -218,6 +221,7 @@ Tango/
 - server-only処理は可能なら`.server.ts`または`infrastructure/server`境界で明示する。
 - 原則4階層程度まで。深くなる場合は責務の分け過ぎかfeature肥大化を見直す。
 - `index.ts`の無差別barrel exportは禁止。feature外へ公開する契約は`public.ts`へ明示する。
+- `features/auth/public.ts` は client bundle に載せてよいものだけ。Start server function は route の beforeLoad から対象moduleを直接importする。
 - `routeTree.gen.ts`、`worker-configuration.d.ts`、Drizzle meta等の生成物は手編集しない。
 
 ## 5. 依存方向・import規約
@@ -271,11 +275,12 @@ composition-root -> application + infrastructure
 
 ## 8. 設計思想からの逸脱
 
-現時点で意図的な逸脱はない。`src/platform`が肥大化する場合はfeatureへ戻すか、責務別top-level directoryへ分割する。
+`getCurrentSession` を `public.ts` に出さない点は、client bundle へ Workers binding を混ぜないためのT02の意図的な例外である。routeのbeforeLoadだけが application module を直接importする。
 
 ## 9. 未決事項
 
 - T01で確定したscaffold差: aliasは `#/*`、CSSは `src/styles.css`、Prettier設定は `prettier.config.js`、Start middleware用 `src/start.ts` は未生成（必要になったタスクで追加）。
+- T02で確定: Drizzle KitのSQLは `drizzle/` 直下（`drizzle/migrations/` ではない）。secret型は `src/env.d.ts` で Cloudflare.Env へ mergeする。
 - AI/翻訳providerがWorkers bindingでなくHTTP APIの場合も、adapter配置は変えない。
 - test session採用時のdirectoryはOQ-005/OQ-010決定後に更新する。
 
@@ -290,3 +295,4 @@ composition-root -> application + infrastructure
 
 - 2026-08-20 初版作成
 - 2026-08-20 T01公式scaffoldとの差（alias、styles.css、test worker、wrangler main）を反映
+- 2026-08-20 T02でauth配置、D1 migration直下、env.d.ts、public.tsの例外を反映

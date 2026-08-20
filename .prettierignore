@@ -6,7 +6,9 @@ CLAUDE.md
 AGENTS.md
 Tango_requirements.md
 src/routeTree.gen.ts
+src/infrastructure/db/schema/auth.generated.ts
 worker-configuration.d.ts
+drizzle/
 dist/
 .output/
 .wrangler/

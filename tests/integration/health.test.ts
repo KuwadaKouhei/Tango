@@ -17,16 +17,17 @@ describe('GET /api/v1/health', () => {
 })
 
 describe('request dispatch', () => {
-  it('未知のAPIパスはHonoのJSON 404になり、Startへ落ちない', async () => {
+  it('未知のprivate APIは未認証なら401になり、Startへ落ちない', async () => {
     const response = await fetchWorker('/api/v1/missing')
     const body: unknown = await response.json()
 
-    expect(response.status).toBe(404)
+    expect(response.status).toBe(401)
     expect(response.headers.get('content-type')).toMatch(/application\/json/u)
     expect(body).toEqual({
       error: {
-        code: 'NOT_FOUND',
-        message: '見つかりません。',
+        code: 'UNAUTHENTICATED',
+        message: 'ログインが必要です。',
+        requestId: expect.any(String),
       },
     })
   })

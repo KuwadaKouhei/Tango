@@ -1,6 +1,6 @@
 # 設計: Tango MVP
 
-> 状態: **思想承認済み。Worker entryはT01で確認済み。**
+> 状態: **思想承認済み。Worker entryはT01、Google認証はT02で確認済み。**
 > 入力: `REQUIREMENTS.md`、`FEASIBILITY.md`、`philosophy/PLAN_PHILOSOPHY.md`、`TECH_STACK.md`
 > 未決事項は `OPEN_QUESTIONS.md` を参照し、本文の暫定案を確定仕様として扱わない。
 
@@ -181,7 +181,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 |---|---|---:|---|
 | GET/POST | `/api/auth/*` | Better Auth | login、callback、session、logout |
 | GET | `/api/v1/health` | 不要 | processのlivenessのみ。本文は `{ "status": "ok" }`。D1/AIの秘密や詳細を返さない |
-| GET | `/api/v1/words` | 必須 | 所有単語と意味・統計のcursor一覧 |
+| GET | `/api/v1/words` | 必須 | 所有単語と意味・統計のcursor一覧。T02は認証確認用の空一覧 `{ items: [], nextCursor: null }`。実データはT05 |
 | POST | `/api/v1/words` | 必須 | 単語と1件以上の意味を原子的に作成 |
 | GET | `/api/v1/words/:wordId` | 必須 | 所有単語の詳細 |
 | PUT | `/api/v1/words/:wordId` | 必須 | 単語・意味・ヒントを原子的に置換更新 |
@@ -380,10 +380,13 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ### 7.1 認証・認可
 
-- Better Auth session CookieをMVPのWeb認証に使う。
+- Better Auth session CookieをMVPのWeb認証に使う。CookieはHttpOnly、SameSite=Lax。`BETTER_AUTH_URL` が https のときだけ Secure。
 - login pageのredirectはUXであり、APIの認可境界ではない。全private APIでsessionを検証する。
+- Webの未認証redirectは Start server function `getCurrentSession` が session cookie を読む。`actorUserId` は session の `user.id` だけを使う。request body の user ID は定義しない。
+- `/api/v1/health` 以外の `/api/v1/*` は `requireAuth` の配下。未認証は `401 UNAUTHENTICATED`。
 - repository queryは必ず`WHERE id = ? AND user_id = ?`または所有者scopeを含める。
 - 将来拡張用token/CORSをMVPへ先回り実装しない。
+- secretは `.dev.vars`（local）またはWorkers secret。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけを置き、OAuth secretは置かない。
 
 ### 7.2 CSRF / CORS
 
@@ -429,15 +432,22 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ## 9. 設計思想からの逸脱
 
-現時点で意図的な逸脱はない。TanStack StartとHonoを同一entryで分岐する部分はframework標準の単一handlerへ追加するため、POC-02不合格なら構成を再検討する。
+T02時点の意図的な限定:
+
+- アプリmutation用のOrigin middlewareはT03へ先送りする。T02のmutationはBetter Auth handlerのみで、`trustedOrigins` で Origin を検証する。
+- `GET /api/v1/words` は空一覧stub。単語CRUDはT05。
+- Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
+- `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 
 ## 10. 未決事項
 
 - `OPEN_QUESTIONS.md` OQ-001〜OQ-018を参照。
 - 特にOQ-009（削除と履歴）は物理FK、OQ-003（AI障害）は履歴一貫性、OQ-005（出題数）はtest session要否へ直結する。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
+- T02: Better Auth + Google + D1のコード経路は実装済み。live Google previewは人間がOAuth clientと `.dev.vars` を設定して確認する。
 
 ## 11. 更新履歴
 
 - 2026-08-20 初版作成
 - 2026-08-20 POC-02合格によりWorker entryのHono分岐を確定。health応答形を追記
+- 2026-08-20 T02でGoogle OAuth、session Cookie、保護layout、private API 401を反映
