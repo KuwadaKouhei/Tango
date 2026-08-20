@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: 設計文書作成済み、全て人間レビュー待ち。実装タスクは全て未着手。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T01（Cloudflare最小縦スライス）作業中。ブランチは `feature/T01-platform-slice`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -120,7 +120,6 @@
 
 ## 現在の必須レビュー項目
 
-- OQ-016: 設計・実装・テスト思想の承認。
-- OQ-017: Git管理と公開repositoryは決定済み。branch/PR/commit運用細部の承認。
-- T01前: OQ-013/014のPoCとversion固定。
+- OQ-016/017: 承認済み。
+- T01: POC-01/02とversion固定をこのタスク内で完了させる。
 - 各タスク前: TASKSの意思決定列にあるOQ。

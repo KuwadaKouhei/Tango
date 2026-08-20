@@ -1,7 +1,7 @@
 # 実現可能性調査: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **条件付きで実現可能／レビュー待ち**
+> 状態: **条件付きで実現可能。POC-01/02は合格。**
 > 主要技術は公式ドキュメントとnpmレジストリの当日スナップショットで確認した。バージョンと料金は実装開始時・本番公開前に再確認する。
 
 ## 1. 概要・調査範囲
@@ -118,8 +118,8 @@
 
 | PoC | 合格条件 | 関連タスク |
 |---|---|---|
-| POC-01 Start + Cloudflare | `dev`、Workers preview、production buildが成功し、SSR画面が応答する | T01 |
-| POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 |
+| POC-01 Start + Cloudflare | `dev`、Workers preview、production buildが成功し、SSR画面が応答する | T01 **合格**（2026-08-20: `vite dev` / `vite build` / `vite preview`、`/` が HTML） |
+| POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 **合格**（2026-08-20: healthは JSON `{"status":"ok"}`、未知APIはJSON 404、`/` はHTML） |
 | POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 |
 | POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 |
 | POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T11 |
@@ -146,3 +146,4 @@
 ## 9. 更新履歴
 
 - 2026-08-20 初版作成
+- 2026-08-20 POC-01/02をT01で合格と記録

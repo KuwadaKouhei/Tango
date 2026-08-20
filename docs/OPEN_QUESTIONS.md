@@ -23,20 +23,39 @@
 
 | ID | 論点 | 現時点の推奨案 | 決定期限 | 状態 |
 |---|---|---|---|---|
-| OQ-013 | TanStack Start RC採用可否 | 公式Cloudflare例でPoCし、SSR・Hono分岐・認証・D1・本番ビルドを通してから固定 | T01完了時 | 未決 |
-| OQ-014 | 依存バージョン | 2026-08-20の候補を `TECH_STACK.md` に記録し、T01で互換セットをlockfileへ固定 | T01完了時 | 未決 |
+| OQ-013 | TanStack Start RC採用可否 | 公式Cloudflare例でPoCし、SSR・Hono分岐・認証・D1・本番ビルドを通してから固定 | T01完了時 | 決定済み（採用） |
+| OQ-014 | 依存バージョン | 2026-08-20の候補を `TECH_STACK.md` に記録し、T01で互換セットをlockfileへ固定 | T01完了時 | 決定済み |
 | OQ-015 | Cloudflare料金プラン・上限 | MVP利用量とWorkers AIモデル要件を見積もり、Free/Paidを選ぶ | T03完了時 | 未決 |
-| OQ-016 | 設計・実装・テスト思想 | 個人MVP向け推奨デフォルトを暫定採用。人間レビュー後に承認へ変更 | 実装着手前 | レビュー待ち |
-| OQ-017 | Git/GitHub運用 | Git管理と公開repository `KuwadaKouhei/Tango` は決定済み。GitHub Flow、Conventional Commits、1タスク=1PRは暫定案 | 実装着手前 | 一部決定・運用細部レビュー待ち |
+| OQ-016 | 設計・実装・テスト思想 | 個人MVP向け推奨デフォルトを暫定採用。人間レビュー後に承認へ変更 | 実装着手前 | 決定済み |
+| OQ-017 | Git/GitHub運用 | Git管理と公開repository `KuwadaKouhei/Tango` は決定済み。GitHub Flow、Conventional Commits、1タスク=1PRは暫定案 | 実装着手前 | 決定済み |
 | OQ-018 | 入力件数・文字数上限 | term 100、meaning 200、意味20件、hint/answer 500文字を初期guardrail候補とする | T05着手前 | 未決 |
 
-## 3. 更新手順
+## 3. 決定記録
+
+### OQ-013（2026-08-20）
+
+TanStack Start 1.168.48（製品ページはRC表記）を採用する。公式CLIの Cloudflare blank scaffold を起点に、`vite dev`、`vite build`、`vite preview`、SSR画面応答が成功した（POC-01）。
+
+### OQ-014（2026-08-20）
+
+互換セットを `package.json` と `pnpm-lock.yaml` へ exact 固定した。公式CLIは TypeScript 6.0.2 を使うため、npm latest の TypeScript 7 は採用しない。pnpm は `packageManager` で 11.22.0 に固定。詳細は `TECH_STACK.md`。
+
+### OQ-016（2026-08-20）
+
+`PLAN_PHILOSOPHY` / `CODING_PHILOSOPHY` / `TEST_PHILOSOPHY` の推奨デフォルトを承認した。
+
+### OQ-017（2026-08-20）
+
+GitHub Flow、Conventional Commits、1タスク=1ブランチ=1PR、AIはmergeしない運用を承認した。公開repositoryは既存決定どおり `KuwadaKouhei/Tango`。
+
+## 4. 更新手順
 
 1. 決定者が選択肢と理由を本書へ記録する。
 2. 状態を `決定済み` にし、決定日を追記する。
 3. 影響する要件、設計、DB、タスク、テストを同じ変更で更新する。
 4. 実装後に決定を変える場合は、データ移行・互換性・ロールバックも記録する。
 
-## 4. 更新履歴
+## 5. 更新履歴
 
 - 2026-08-20 初版作成
+- 2026-08-20 OQ-013/014/016/017を決定済みへ更新

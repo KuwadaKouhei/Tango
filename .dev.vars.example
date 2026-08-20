@@ -1,0 +1,2 @@
+# Copy to `.dev.vars`. Real secrets must never be committed.
+# T01 has no required secrets. T02 will add Google OAuth variable names only.

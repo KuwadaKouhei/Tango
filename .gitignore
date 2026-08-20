@@ -1,10 +1,14 @@
 # Dependencies and build output
 node_modules/
 dist/
+dist-ssr/
 .output/
 .tanstack/
 .wrangler/
+.nitro/
+.vinxi/
 coverage/
+__unconfig*
 
 # Local Cloudflare and environment secrets
 .dev.vars
@@ -27,3 +31,4 @@ blob-report/
 .DS_Store
 Thumbs.db
 *.local
+todos.json
