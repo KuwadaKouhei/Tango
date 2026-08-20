@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import { env } from 'cloudflare:workers'
-import { getSessionFromHeaders } from '../../infrastructure/auth/session-adapter'
+import { getSessionFromHeaders } from '../../../infrastructure/auth/session-adapter'
 
 /**
  * Web画面の未認証redirect用。API認可の正本は Hono の requireAuth。
