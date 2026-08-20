@@ -1,6 +1,6 @@
 # 設計: Tango MVP
 
-> 状態: **レビュー待ち**
+> 状態: **思想承認済み。Worker entryはT01で確認済み。**
 > 入力: `REQUIREMENTS.md`、`FEASIBILITY.md`、`philosophy/PLAN_PHILOSOPHY.md`、`TECH_STACK.md`
 > 未決事項は `OPEN_QUESTIONS.md` を参照し、本文の暫定案を確定仕様として扱わない。
 
@@ -65,7 +65,7 @@ Browser
 3. その他をTanStack Start handlerへ渡す。
 4. 未捕捉例外を構造化ログへ記録し、APIは共通JSON、Webは汎用error boundaryで返す。
 
-StartとHonoの共存は公式のfetch handlerを組み合わせる推論であり、POC-02合格前は確定しない。
+StartとHonoの共存はPOC-02で確認した。`wrangler.jsonc` の `main` は `src/server.ts` とし、`/api` と `/api/*` をHono、それ以外を TanStack Start の `createServerEntry` へ渡す。
 
 ## 3. コンポーネント／モジュール
 
@@ -180,7 +180,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 | method | path | auth | 概要 |
 |---|---|---:|---|
 | GET/POST | `/api/auth/*` | Better Auth | login、callback、session、logout |
-| GET | `/api/v1/health` | 不要 | processのlivenessのみ。D1/AIの秘密や詳細を返さない |
+| GET | `/api/v1/health` | 不要 | processのlivenessのみ。本文は `{ "status": "ok" }`。D1/AIの秘密や詳細を返さない |
 | GET | `/api/v1/words` | 必須 | 所有単語と意味・統計のcursor一覧 |
 | POST | `/api/v1/words` | 必須 | 単語と1件以上の意味を原子的に作成 |
 | GET | `/api/v1/words/:wordId` | 必須 | 所有単語の詳細 |
@@ -435,8 +435,9 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 - `OPEN_QUESTIONS.md` OQ-001〜OQ-018を参照。
 - 特にOQ-009（削除と履歴）は物理FK、OQ-003（AI障害）は履歴一貫性、OQ-005（出題数）はtest session要否へ直結する。
-- 人間が思想3文書を承認するまで、本設計の原則もレビュー待ちとする。
+- 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 
 ## 11. 更新履歴
 
 - 2026-08-20 初版作成
+- 2026-08-20 POC-02合格によりWorker entryのHono分岐を確定。health応答形を追記

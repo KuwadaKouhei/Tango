@@ -1,6 +1,6 @@
 # Git運用方針（GIT_CONVENTIONS）
 
-> 状態: **Git管理・公開repositoryは決定済み／運用細部は人間レビュー待ち（OQ-017）**
+> 状態: **承認済み（OQ-017）**
 > Repository: [KuwadaKouhei/Tango](https://github.com/KuwadaKouhei/Tango)（PUBLIC）
 
 ## 1. 概要
@@ -80,3 +80,4 @@ update files
 
 - 2026-08-20 初版作成
 - 2026-08-20 公開GitHub repositoryと初回baseline方針を反映
+- 2026-08-20 OQ-017の運用細部を承認済みへ更新

@@ -1,0 +1,14 @@
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+docs/
+CLAUDE.md
+AGENTS.md
+Tango_requirements.md
+src/routeTree.gen.ts
+worker-configuration.d.ts
+dist/
+.output/
+.wrangler/
+.tanstack/
+coverage/

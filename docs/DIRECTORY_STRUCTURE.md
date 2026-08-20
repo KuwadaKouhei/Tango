@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **レビュー待ち**
+> 状態: **T01でscaffold差を反映済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -144,16 +144,13 @@ Tango/
 │   │   │       ├── rate-limit.ts
 │   │   │       └── request-id.ts
 │   │   └── composition-root.ts
-│   ├── styles/
-│   │   ├── global.css
-│   │   ├── tokens.css
-│   │   └── mastery-colors.ts
+│   ├── styles.css                     # T01公式blank。カード色追加時に分割してよい
 │   ├── router.tsx
 │   ├── routeTree.gen.ts               # TanStack生成。手編集禁止
-│   ├── server.ts                      # Hono / Start fetch dispatch
-│   └── start.ts                       # Start middleware設定
+│   └── server.ts                      # Hono / Start fetch dispatch
 ├── tests/
 │   ├── integration/
+│   │   ├── health.test.ts
 │   │   ├── auth-isolation.test.ts
 │   │   ├── word-api.test.ts
 │   │   ├── study-api.test.ts
@@ -165,9 +162,14 @@ Tango/
 │   │   ├── auth.setup.ts
 │   │   ├── word-learning.spec.ts
 │   │   └── fixtures.ts
-│   └── setup/
-│       ├── apply-migrations.ts
-│       └── test-builders.ts
+│   ├── workers/
+│   │   └── dispatch-worker.ts         # Start仮想moduleを避けたWorkers test entry
+│   ├── setup/
+│   │   ├── apply-migrations.ts
+│   │   └── test-builders.ts
+│   ├── cloudflare-test.d.ts
+│   └── tsconfig.json
+├── .cta.json
 ├── .dev.vars.example                  # 名前とダミー値だけ
 ├── .gitignore
 ├── AGENTS.md
@@ -177,12 +179,15 @@ Tango/
 ├── package.json
 ├── playwright.config.ts
 ├── pnpm-lock.yaml
-├── prettier.config.mjs
+├── pnpm-workspace.yaml                # pnpm 11 の allowBuilds 等
+├── prettier.config.js                 # 公式CLIは .js
 ├── tsconfig.json
+├── tsr.config.json
 ├── vite.config.ts
 ├── vitest.config.ts
 ├── worker-configuration.d.ts          # wrangler types生成。手編集禁止
-└── wrangler.jsonc                     # Cloudflare構成の正本
+├── wrangler.jsonc                     # Cloudflare構成の正本
+└── wrangler.test.jsonc                # Start仮想moduleを避けるtest worker用
 ```
 
 実際のTanStack Start scaffoldが生成する名前と異なる場合は、T01で公式生成物を優先し、本書を同じPRで更新する。
@@ -224,7 +229,7 @@ infrastructure -> domain ports
 composition-root -> application + infrastructure
 ```
 
-- aliasは`~/`を`src/`へ割り当てる。
+- aliasはpackage.json `imports` の `#/*` を `src/` へ割り当てる。公式 blank scaffold に合わせる。
 - feature間importは相手featureの`public.ts`だけを経由する。内部pathへのdeep importは禁止。
 - `domain`は同featureのdomainと`platform`のprimitiveにだけ依存できる。
 - `application`はdomainとportに依存し、infrastructureを直接`new`しない。
@@ -259,8 +264,9 @@ composition-root -> application + infrastructure
 ## 7. framework規約との整合
 
 - TanStack Router推奨のfile-based routingと`src/routes`、生成`src/routeTree.gen.ts`を利用する。
-- `src/server.ts`はTanStack Start公式server entryを拡張する場所とし、Hono分岐以外の業務処理を置かない。
-- `wrangler.jsonc`をCloudflare構成の正本とし、D1/AI binding typeは`wrangler types`で生成する。
+- `src/server.ts`はTanStack Start公式の `createServerEntry` を拡張する場所とし、Hono分岐以外の業務処理を置かない。
+- `wrangler.jsonc` の `main` は `src/server.ts`。公式デフォルトの仮想module `@tanstack/react-start/server-entry` はHono分岐とWorkers Vitestの相性のため使わない。
+- Workers integration testは `wrangler.test.jsonc` で Start stub worker を指す。
 - Start server functionsはWeb専用の薄い補助に限定し、外部再利用が必要な業務APIはHonoへ置く。
 
 ## 8. 設計思想からの逸脱
@@ -269,7 +275,7 @@ composition-root -> application + infrastructure
 
 ## 9. 未決事項
 
-- 実scaffoldによるroute filenameとconfig差はT01で確定する。
+- T01で確定したscaffold差: aliasは `#/*`、CSSは `src/styles.css`、Prettier設定は `prettier.config.js`、Start middleware用 `src/start.ts` は未生成（必要になったタスクで追加）。
 - AI/翻訳providerがWorkers bindingでなくHTTP APIの場合も、adapter配置は変えない。
 - test session採用時のdirectoryはOQ-005/OQ-010決定後に更新する。
 
@@ -283,3 +289,4 @@ composition-root -> application + infrastructure
 ## 11. 更新履歴
 
 - 2026-08-20 初版作成
+- 2026-08-20 T01公式scaffoldとの差（alias、styles.css、test worker、wrangler main）を反映

@@ -1,8 +1,8 @@
 # 技術スタック選定: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **候補バージョンの互換性検証待ち（OQ-013/OQ-014）**
-> 要件で指定された中核スタックを尊重し、現行公式情報とnpmレジストリを確認した。T01〜T03のPoC合格後、実際の`package.json`とlockfileを確定版とする。
+> 状態: **T01でlockfile固定済み（OQ-013/OQ-014）**
+> 要件で指定された中核スタックを尊重し、公式CLIとnpmレジストリで互換セットを確認した。以後の更新は独立PRでbuild/testを再実行する。
 
 ## 1. 選定方針
 
@@ -37,34 +37,37 @@
 | CI | GitHub Actions | GitHub FlowとPR gateに統合しやすい |
 | UI style | CSS Modules/通常CSS + CSS custom properties | MVPにUI framework依存を増やさず、カード色を明示的に制御 |
 
-## 3. 調査時点の候補バージョン
+## 3. T01で固定したバージョン
 
-次はnpm registryで2026-08-20に確認した`latest`であり、**そのまま一括採用する一覧ではない**。互換性のある組合せをT01でinstall/build/testし、exact versionをlockfileへ固定する。
+次はT01（2026-08-20）で `package.json` / `pnpm-lock.yaml` へ exact 固定した値である。調査時点のnpm latestを盲採用せず、公式 TanStack CLI（`--blank --deployment cloudflare --toolchain eslint`）とWorkers Vitestのpeer範囲を優先した。
 
-| package/tool | 調査値 | 備考 |
+| package/tool | 固定値 | 備考 |
 |---|---:|---|
-| Node.js | ローカル 22.17.1 / Start要件 `>=22.12.0` | 開発・CI用。Workers本番runtimeとは別 |
-| pnpm | 11.22.0 | `packageManager`で固定候補 |
-| TypeScript | 7.0.2 | 最新を盲採用せず、Vite/ESLint/Start互換をPoC |
+| Node.js | 開発機 22.17.1 / 要件 `>=22.12.0` | `engines` とCIで固定する。Workers本番runtimeとは別 |
+| pnpm | 11.22.0 | `packageManager` で固定。設定は `pnpm-workspace.yaml` |
+| TypeScript | 6.0.2 | 公式CLI互換。npm latestの7.0.2は未採用 |
 | React / React DOM | 19.2.8 | Startのpeer範囲内 |
-| `@tanstack/react-start` | 1.168.48 | npm latestだが公式ページはRC表記 |
-| `@tanstack/react-router` | 1.170.31 | Start 1.168.48が直接依存する値に合わせる |
-| `@tanstack/react-query` | 5.101.4 | server-state用 |
-| Vite | 8.2.2 | Startは`>=7`、Cloudflare pluginは6/7/8対応 |
+| `@tanstack/react-start` | 1.168.48 | 公式ページはRC表記。POC-01/02合格により採用 |
+| `@tanstack/react-router` | 1.170.31 | Start 1.168.48と組み合わせてbuild/test成功 |
+| Vite | 8.2.2 | `@cloudflare/vite-plugin` 1.53.0と互換 |
 | `@vitejs/plugin-react` | 6.1.0 | Vite 8 peer |
 | Hono | 4.13.3 | `/api/v1` REST API |
-| Zod | 4.4.3 | external input/output schema |
-| `@hono/zod-validator` | 0.9.0 | Hono boundary validation |
-| Better Auth / Drizzle adapter | 1.7.1 / 1.7.1 | 同じversion lineを維持 |
-| Drizzle ORM / Kit | 0.45.2 / 0.31.10 | Better Auth 1.7.1のpeer範囲を満たす |
-| Wrangler | 4.124.0 | Cloudflare plugin 1.53.0のpeer |
+| Wrangler | 4.124.0 | `compatibility_date` は 2026-08-20 |
 | `@cloudflare/vite-plugin` | 1.53.0 | Start公式配備経路 |
-| Vitest | 4.1.11 | Workers test pool要件`^4.1.0`を満たす |
-| `@cloudflare/vitest-pool-workers` | 0.22.0 | Workers/D1 integration |
-| Playwright | 1.62.1 | E2E |
-| ESLint / Prettier | 10.8.1 / 3.9.6 | 設定plugin互換をT01で確認 |
+| Vitest | 4.1.11 | Workers test pool要件 `^4.1.0` |
+| `@cloudflare/vitest-pool-workers` | 0.22.0 | health/dispatch integration |
+| ESLint / Prettier | 10.8.1 / 3.9.6 | `@tanstack/eslint-config` 0.4.0 が ESLint 10 を要求 |
+| `@tanstack/eslint-config` | 0.4.0 | 公式CLI toolchain |
+| `@tanstack/router-cli` | 1.167.32 | `tsr generate` |
 
-全ての主要npm依存は調査時点でMITまたはApache-2.0系のpermissive licenseだった。依存更新時もlicense scanを行う。
+Zod / Better Auth / Drizzle / Playwright / TanStack Query はT01では未導入。各タスクで追加し、この表へ exact versionを追記する。
+
+T01で確認した公式scaffoldとの差:
+
+- 公式 `wrangler.jsonc` の `main` は `@tanstack/react-start/server-entry`（仮想module）。Hono分岐のため `src/server.ts` を `main` にする。
+- `@tanstack/vitest-pool-workers` は仮想moduleを静的解析できないため、integration testは `wrangler.test.jsonc` + Start stub worker を使う。
+- 公式 blank は `#/*` import alias と `src/styles.css` を使う。Tailwindは入れない。
+- TypeScript 7 ではなく公式CLIの 6.0.2 を使う。
 
 ## 4. 領域別比較
 
@@ -173,3 +176,4 @@
 ## 8. 更新履歴
 
 - 2026-08-20 公式情報・npmスナップショットに基づく初版作成
+- 2026-08-20 T01でPOC-01/02合格後のlockfile固定値を反映
