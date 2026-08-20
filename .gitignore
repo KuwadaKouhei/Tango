@@ -1,0 +1,29 @@
+# Dependencies and build output
+node_modules/
+dist/
+.output/
+.tanstack/
+.wrangler/
+coverage/
+
+# Local Cloudflare and environment secrets
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+
+# Local databases and test artifacts
+*.sqlite
+*.sqlite3
+playwright-report/
+test-results/
+blob-report/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.local
