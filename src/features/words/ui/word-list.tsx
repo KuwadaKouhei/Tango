@@ -1,38 +1,25 @@
-import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { formatWordStatsLabel } from './format-word-stats'
 import { listWordsRequest } from './list-words-request'
-import type { WordListResponse } from '../api/word-schemas'
-
-type ListStatus = 'loading' | 'ready' | 'error'
+import { isClientRuntime, wordQueryKeys } from './word-query-keys'
 
 export function WordList({ onSignOut }: { onSignOut: () => void }) {
-  const [status, setStatus] = useState<ListStatus>('loading')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [items, setItems] = useState<WordListResponse['items']>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const listQuery = useInfiniteQuery({
+    queryKey: wordQueryKeys.lists(),
+    queryFn: async ({ pageParam }) => {
+      const result = await listWordsRequest({ cursor: pageParam })
+      if (!result.ok) {
+        throw new Error(result.message)
+      }
+      return result.page
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: isClientRuntime(),
+  })
 
-  const loadPage = async (cursor: string | null, append: boolean) => {
-    const result = await listWordsRequest({ cursor })
-    if (!result.ok) {
-      setStatus('error')
-      setErrorMessage(result.message)
-      return
-    }
-
-    setItems((current) =>
-      append ? [...current, ...result.page.items] : result.page.items,
-    )
-    setNextCursor(result.page.nextCursor)
-    setErrorMessage(null)
-    setStatus('ready')
-  }
-
-  useEffect(() => {
-    void loadPage(null, false)
-    // 初回取得のみ。loadPageはrenderごとに新しくなるため依存に入れない。
-  }, [])
+  const items = listQuery.data?.pages.flatMap((page) => page.items) ?? []
 
   return (
     <section>
@@ -45,22 +32,18 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
         </button>
       </p>
 
-      {status === 'loading' ? <p>読み込み中…</p> : null}
-      {status === 'error' ? (
+      {listQuery.isPending ? <p>読み込み中…</p> : null}
+      {listQuery.isError ? (
         <p role="alert">
-          {errorMessage}{' '}
-          <button
-            type="button"
-            onClick={() => {
-              setStatus('loading')
-              void loadPage(null, false)
-            }}
-          >
+          {listQuery.error instanceof Error
+            ? listQuery.error.message
+            : '一覧の取得に失敗しました。'}{' '}
+          <button type="button" onClick={() => void listQuery.refetch()}>
             再試行
           </button>
         </p>
       ) : null}
-      {status === 'ready' && items.length === 0 ? (
+      {listQuery.isSuccess && items.length === 0 ? (
         <p>まだ単語がありません。</p>
       ) : null}
 
@@ -89,19 +72,14 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
         </article>
       ))}
 
-      {nextCursor ? (
+      {listQuery.hasNextPage ? (
         <p>
           <button
             type="button"
-            disabled={isLoadingMore}
-            onClick={() => {
-              setIsLoadingMore(true)
-              void loadPage(nextCursor, true).finally(() => {
-                setIsLoadingMore(false)
-              })
-            }}
+            disabled={listQuery.isFetchingNextPage}
+            onClick={() => void listQuery.fetchNextPage()}
           >
-            {isLoadingMore ? '読み込み中…' : 'さらに表示'}
+            {listQuery.isFetchingNextPage ? '読み込み中…' : 'さらに表示'}
           </button>
         </p>
       ) : null}

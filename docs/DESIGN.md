@@ -463,13 +463,12 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ## 9. 設計思想からの逸脱
 
-T05時点の意図的な限定:
+T06時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
 - 公開DELETEはOQ-009決定まで作らない。履歴ありwordはDB `RESTRICT`。一覧の削除導線はdisabled。
-- 編集画面はT06までplaceholder。一覧から `/words/$wordId/edit` へは進める。
-- 一覧のサーバー状態はT04と同様に`fetch`1本。TanStack Queryは編集後のcache整合が必要になるT06で導入する。
-- カード色の補間はOQ-007/T14。T05は未回答と正解率を文字で示す。
+- 単語のサーバー状態はTanStack Query。相対URLのfetchはclientだけで行い、SSRではqueryをenabledにしない。
+- カード色の補間はOQ-007/T14。一覧は未回答と正解率を文字で示す。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 
@@ -488,3 +487,4 @@ T05時点の意図的な限定:
 - 2026-08-20 T03でAppError、requestId、Origin、words/test_results schema、所有者隔離を反映
 - 2026-08-20 T04で単語登録画面と複数意味・ヒント保存を反映。OQ-018は未決のままguardrail候補を適用
 - 2026-08-21 T05で所有単語のcursor一覧と未回答/正解率を反映。OQ-012は未決のままページサイズ候補を防御値として適用
+- 2026-08-21 T06で単語編集画面とTanStack Query cache無効化を反映。OQ-008/018は未決のまま

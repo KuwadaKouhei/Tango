@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T05で単語一覧画面を反映済み**
+> 状態: **T06で単語編集画面とTanStack Queryを反映済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -73,6 +73,10 @@ Tango/
 │   │   │   ├── ui/
 │   │   │   │   ├── create-word-request.ts
 │   │   │   │   ├── word-create-form.tsx
+│   │   │   │   ├── word-fields.tsx
+│   │   │   │   ├── word-edit-form.tsx
+│   │   │   │   ├── word-detail-request.ts
+│   │   │   │   ├── word-query-keys.ts
 │   │   │   │   ├── list-words-request.ts
 │   │   │   │   ├── format-word-stats.ts
 │   │   │   │   └── word-list.tsx
@@ -164,6 +168,7 @@ Tango/
 │   │   ├── schema-constraints.test.ts
 │   │   ├── create-word.test.ts
 │   │   ├── list-words.test.ts
+│   │   ├── update-word.test.ts
 │   │   ├── word-api.test.ts
 │   │   ├── study-api.test.ts
 │   │   └── translation-api.test.ts
@@ -308,3 +313,4 @@ composition-root -> application + infrastructure
 - 2026-08-20 T03でapp schema、AppError、ownership/error contract testを反映
 - 2026-08-20 T04で `/words/new` と word-create-form を反映
 - 2026-08-21 T05で `/words` 一覧、統計、`$wordId.edit` 導線を反映
+- 2026-08-21 T06で編集フォーム、word-fields、TanStack Queryを反映

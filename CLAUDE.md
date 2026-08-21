@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T05（単語一覧と未回答統計）作業中。ブランチは `feature/T05-word-list`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T06（単語・意味・ヒント編集）作業中。ブランチは `feature/T06-word-edit`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
