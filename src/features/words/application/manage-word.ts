@@ -2,7 +2,7 @@ import type { Clock } from '../../../platform/clock'
 import { AppError } from '../../../platform/app-error'
 import { createOpaqueId } from '../../../platform/ids'
 import {
-  emptyToNullHint,
+  requirePreparedHint,
   requirePreparedMeanings,
   requirePreparedTerm,
 } from '../domain/prepare-word'
@@ -31,7 +31,7 @@ export const createWord = async (input: {
     userId: input.command.actorUserId,
     term: preparedTerm.term,
     normalizedTerm: preparedTerm.normalizedTerm,
-    hint: emptyToNullHint(input.command.hint),
+    hint: requirePreparedHint(input.command.hint),
     createdAt: now,
     updatedAt: now,
     meanings: preparedMeanings.map((meaning) => ({
@@ -81,7 +81,7 @@ export const updateWord = async (input: {
     userId: input.command.actorUserId,
     term: preparedTerm.term,
     normalizedTerm: preparedTerm.normalizedTerm,
-    hint: emptyToNullHint(input.command.hint),
+    hint: requirePreparedHint(input.command.hint),
     createdAt: existing.createdAt,
     updatedAt: now,
     meanings: preparedMeanings.map((meaning) => ({

@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T02マージ済み。T03 PR中（feature/T03-d1-ownership）。人間review/merge後に次タスクへ進む。**
+> 状態: **T03マージ済み。T04 PR中（feature/T04-word-create）。人間review/merge後に次タスクへ進む。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -20,8 +20,8 @@
 |---|---|---|---|---|---|---|
 | T01 | Cloudflare上で動く最小縦スライス | 技術PoC | なし | OQ-013,014 | `feature/T01-platform-slice` | ✅マージ済み |
 | T02 | Googleログインと保護画面 | AC-001,003 | T01 | OAuth環境設定 | `feature/T02-google-auth` | ✅マージ済み |
-| T03 | D1 schema・migration・所有者分離基盤 | AC-003,009 | T01,T02 | OQ-009初期方針確認 | `feature/T03-d1-ownership` | 🟡PR中 |
-| T04 | 複数意味・ヒント付き単語登録 | AC-002,006 | T03 | OQ-008,018 | `feature/T04-word-create` | ⬜未着手 |
+| T03 | D1 schema・migration・所有者分離基盤 | AC-003,009 | T01,T02 | OQ-009初期方針確認 | `feature/T03-d1-ownership` | ✅マージ済み |
+| T04 | 複数意味・ヒント付き単語登録 | AC-002,006 | T03 | OQ-008,018 | `feature/T04-word-create` | 🟡PR中 |
 | T05 | 単語一覧と未回答統計 | AC-003,010 | T04 | OQ-012 | `feature/T05-word-list` | ⬜未着手 |
 | T06 | 単語・意味・ヒント編集 | AC-002,003 | T04,T05 | OQ-008,018 | `feature/T06-word-edit` | ⬜未着手 |
 | T07 | 単語削除 | AC-003 | T06 | **OQ-009必須** | `feature/T07-word-delete` | ⬜未着手 |
@@ -86,7 +86,7 @@
 完了条件:
 
 - 1件以上の意味を追加・削除・並べて登録できる。
-- 意味0件、空白、OQ-018で決めた上限をUI/APIの両方で扱う。
+- 意味0件、空白、OQ-018の初期guardrail候補（未決のまま）をUI/APIの両方で扱う。
 - hintは任意で空文字をNULLへ正規化する。
 - wordとmeaningsがD1 batchで全件成功または全件rollbackする。
 - 新規画面に回答回数を表示しない。
@@ -275,3 +275,4 @@ OQ-010の検索、重複警告、終了結果、間違い再テスト、AI手動
 - 2026-08-20 T01をPR中へ更新
 - 2026-08-20 T01をマージ済み、T02をPR中へ更新
 - 2026-08-20 T02をマージ済み、T03をPR中へ更新
+- 2026-08-20 T03をマージ済み、T04をPR中へ更新
