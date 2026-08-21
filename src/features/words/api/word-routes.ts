@@ -1,16 +1,17 @@
 import { Hono } from 'hono'
 import { AppError } from '../../../platform/app-error'
+import { listOwnedWords } from '../application/list-owned-words'
 import {
   createWord,
   getOwnedWord,
   updateWord,
 } from '../application/manage-word'
-import type { Word } from '../domain/word'
+import type { Word, WordWithStats } from '../domain/word'
 import { createAppServices } from '../../../server/composition-root'
 import type { AuthBindings } from '../../../server/api/bindings'
 import type { AuthVariables } from '../../../server/api/middleware/auth'
 import type { RequestIdVariables } from '../../../server/api/middleware/request-id'
-import { upsertWordBodySchema } from './word-schemas'
+import { listWordsQuerySchema, upsertWordBodySchema } from './word-schemas'
 
 type WordRouteEnv = {
   Bindings: AuthBindings
@@ -19,19 +20,32 @@ type WordRouteEnv = {
 
 const toIso = (epochMs: number): string => new Date(epochMs).toISOString()
 
+const toMeaningResponse = (word: Word) =>
+  word.meanings.map((meaning) => ({
+    id: meaning.id,
+    meaning: meaning.meaning,
+    order: meaning.sortOrder,
+  }))
+
 const toWordResponse = (word: Word) => ({
   word: {
     id: word.id,
     term: word.term,
-    meanings: word.meanings.map((meaning) => ({
-      id: meaning.id,
-      meaning: meaning.meaning,
-      order: meaning.sortOrder,
-    })),
+    meanings: toMeaningResponse(word),
     hint: word.hint,
     createdAt: toIso(word.createdAt),
     updatedAt: toIso(word.updatedAt),
   },
+})
+
+const toListItem = (word: WordWithStats) => ({
+  id: word.id,
+  term: word.term,
+  meanings: toMeaningResponse(word),
+  hint: word.hint,
+  stats: word.stats,
+  createdAt: toIso(word.createdAt),
+  updatedAt: toIso(word.updatedAt),
 })
 
 const readUpsertBody = async (c: { req: { json: () => Promise<unknown> } }) => {
@@ -58,6 +72,34 @@ const readUpsertBody = async (c: { req: { json: () => Promise<unknown> } }) => {
 
 export const createWordRoutes = () => {
   const routes = new Hono<WordRouteEnv>()
+
+  routes.get('/words', async (c) => {
+    const parsed = listWordsQuerySchema.safeParse({
+      ...(c.req.query('cursor') ? { cursor: c.req.query('cursor') } : {}),
+      ...(c.req.query('limit') ? { limit: c.req.query('limit') } : {}),
+    })
+    if (!parsed.success) {
+      throw AppError.validation('入力が正しくありません。', {
+        fields: parsed.error.issues.map((issue) => issue.path.join('.')),
+      })
+    }
+
+    const services = createAppServices(c.env)
+    const page = await listOwnedWords({
+      actorUserId: c.get('actorUserId'),
+      cursor: parsed.data.cursor ?? null,
+      limit: parsed.data.limit ?? null,
+      wordRepository: services.wordRepository,
+    })
+
+    return c.json(
+      {
+        items: page.items.map(toListItem),
+        nextCursor: page.nextCursor,
+      },
+      200,
+    )
+  })
 
   routes.post('/words', async (c) => {
     const body = await readUpsertBody(c)

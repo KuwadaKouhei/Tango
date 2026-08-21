@@ -1,5 +1,6 @@
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { authClient } from '#/features/auth/public'
+import { WordList } from '#/features/words/ui/word-list'
 
 export const Route = createFileRoute('/_authenticated/words/')({
   component: WordsPage,
@@ -8,8 +9,8 @@ export const Route = createFileRoute('/_authenticated/words/')({
 function WordsPage() {
   const navigate = useNavigate()
 
-  const signOut = async () => {
-    await authClient.signOut({
+  const signOut = () => {
+    void authClient.signOut({
       fetchOptions: {
         onSuccess: () => {
           void navigate({ to: '/login' })
@@ -20,16 +21,7 @@ function WordsPage() {
 
   return (
     <main>
-      <h1>単語一覧</h1>
-      <p>まだ単語がありません。</p>
-      <p>
-        <Link to="/words/new">単語を登録</Link>
-      </p>
-      <p>
-        <button type="button" onClick={() => void signOut()}>
-          ログアウト
-        </button>
-      </p>
+      <WordList onSignOut={signOut} />
     </main>
   )
 }

@@ -61,8 +61,12 @@ describe('create word', () => {
       }),
     ).rejects.toBeInstanceOf(AppError)
 
-    const listed = await services.wordRepository.listByOwner('creator-empty')
-    expect(listed).toEqual([])
+    const listed = await services.wordRepository.listByOwner({
+      ownerUserId: 'creator-empty',
+      cursor: null,
+      limit: 20,
+    })
+    expect(listed.items).toEqual([])
   })
 
   it('body相当のuserIdでは所有者を切り替えられない', async () => {

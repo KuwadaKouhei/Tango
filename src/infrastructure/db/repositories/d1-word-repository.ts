@@ -1,7 +1,15 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { encodeWordListCursor } from '../../../features/words/domain/word-list-cursor'
 import type { WordRepository } from '../../../features/words/domain/word-repository'
-import type { NewWord, Word, WordId } from '../../../features/words/domain/word'
+import { toWordStats } from '../../../features/words/domain/word-stats'
+import type {
+  NewWord,
+  Word,
+  WordId,
+  WordWithStats,
+} from '../../../features/words/domain/word'
 import type { AppDb } from '../drizzle'
+import { testResults } from '../schema/test-results'
 import { wordMeanings } from '../schema/word-meanings'
 import { words } from '../schema/words'
 
@@ -63,18 +71,67 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
   return {
     findOwnedById,
 
-    listByOwner: async (ownerUserId) => {
-      const rows = await db
-        .select()
-        .from(words)
-        .where(eq(words.userId, ownerUserId))
+    listByOwner: async (input) => {
+      const cursorFilter = input.cursor
+        ? sql`(${words.createdAt}, ${words.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`
+        : undefined
 
-      const result: Word[] = []
-      for (const row of rows) {
-        result.push(toWord(row, await loadMeanings(row.id)))
+      const rows = await db
+        .select({
+          id: words.id,
+          userId: words.userId,
+          term: words.term,
+          normalizedTerm: words.normalizedTerm,
+          hint: words.hint,
+          createdAt: words.createdAt,
+          updatedAt: words.updatedAt,
+          total: sql<number>`count(${testResults.id})`,
+          correct: sql<number>`coalesce(sum(${testResults.isCorrect}), 0)`,
+        })
+        .from(words)
+        .leftJoin(
+          testResults,
+          and(
+            eq(testResults.wordId, words.id),
+            eq(testResults.userId, words.userId),
+          ),
+        )
+        .where(and(eq(words.userId, input.ownerUserId), cursorFilter))
+        .groupBy(words.id)
+        .orderBy(desc(words.createdAt), desc(words.id))
+        .limit(input.limit + 1)
+
+      const hasNext = rows.length > input.limit
+      const pageRows = hasNext ? rows.slice(0, input.limit) : rows
+      const wordIds = pageRows.map((row) => row.id)
+      const meaningRows =
+        wordIds.length === 0
+          ? []
+          : await db
+              .select()
+              .from(wordMeanings)
+              .where(inArray(wordMeanings.wordId, wordIds))
+
+      const meaningsByWordId = new Map<string, typeof meaningRows>()
+      for (const meaning of meaningRows) {
+        const current = meaningsByWordId.get(meaning.wordId) ?? []
+        current.push(meaning)
+        meaningsByWordId.set(meaning.wordId, current)
       }
 
-      return result
+      const items: WordWithStats[] = pageRows.map((row) => ({
+        ...toWord(row, meaningsByWordId.get(row.id) ?? []),
+        stats: toWordStats(Number(row.correct), Number(row.total)),
+      }))
+
+      const last = items[items.length - 1]
+      return {
+        items,
+        nextCursor:
+          hasNext && last
+            ? encodeWordListCursor({ createdAt: last.createdAt, id: last.id })
+            : null,
+      }
     },
 
     create: async (input) => {

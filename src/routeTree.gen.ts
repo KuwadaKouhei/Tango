@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedWordsIndexRouteImport } from './routes/_authenticated/words/index'
 import { Route as AuthenticatedWordsNewRouteImport } from './routes/_authenticated/words/new'
+import { Route as AuthenticatedWordsWordIdEditRouteImport } from './routes/_authenticated/words/$wordId.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,18 +40,26 @@ const AuthenticatedWordsNewRoute = AuthenticatedWordsNewRouteImport.update({
   path: '/words/new',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedWordsWordIdEditRoute =
+  AuthenticatedWordsWordIdEditRouteImport.update({
+    id: '/words/$wordId/edit',
+    path: '/words/$wordId/edit',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/words/new': typeof AuthenticatedWordsNewRoute
   '/words/': typeof AuthenticatedWordsIndexRoute
+  '/words/$wordId/edit': typeof AuthenticatedWordsWordIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/words/new': typeof AuthenticatedWordsNewRoute
   '/words': typeof AuthenticatedWordsIndexRoute
+  '/words/$wordId/edit': typeof AuthenticatedWordsWordIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +68,13 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/words/new': typeof AuthenticatedWordsNewRoute
   '/_authenticated/words/': typeof AuthenticatedWordsIndexRoute
+  '/_authenticated/words/$wordId/edit': typeof AuthenticatedWordsWordIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/words/new' | '/words/'
+  fullPaths: '/' | '/login' | '/words/new' | '/words/' | '/words/$wordId/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/words/new' | '/words'
+  to: '/' | '/login' | '/words/new' | '/words' | '/words/$wordId/edit'
   id:
     | '__root__'
     | '/'
@@ -72,6 +82,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/words/new'
     | '/_authenticated/words/'
+    | '/_authenticated/words/$wordId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,17 +128,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWordsNewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/words/$wordId/edit': {
+      id: '/_authenticated/words/$wordId/edit'
+      path: '/words/$wordId/edit'
+      fullPath: '/words/$wordId/edit'
+      preLoaderRoute: typeof AuthenticatedWordsWordIdEditRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedWordsNewRoute: typeof AuthenticatedWordsNewRoute
   AuthenticatedWordsIndexRoute: typeof AuthenticatedWordsIndexRoute
+  AuthenticatedWordsWordIdEditRoute: typeof AuthenticatedWordsWordIdEditRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedWordsNewRoute: AuthenticatedWordsNewRoute,
   AuthenticatedWordsIndexRoute: AuthenticatedWordsIndexRoute,
+  AuthenticatedWordsWordIdEditRoute: AuthenticatedWordsWordIdEditRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

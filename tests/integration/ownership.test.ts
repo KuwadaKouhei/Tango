@@ -72,8 +72,12 @@ describe('owner isolation', () => {
     const wordA = await createOwnedWord('list-a', 'apple', ['りんご'])
     await createOwnedWord('list-b', 'orange', ['みかん'])
 
-    const listed = await services.wordRepository.listByOwner('list-a')
-    expect(listed.map((word) => word.term)).toEqual(['apple'])
+    const listed = await services.wordRepository.listByOwner({
+      ownerUserId: 'list-a',
+      cursor: null,
+      limit: 20,
+    })
+    expect(listed.items.map((word) => word.term)).toEqual(['apple'])
 
     const deleted = await services.wordRepository.deleteOwned(
       'list-b',

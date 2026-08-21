@@ -35,8 +35,6 @@ export const createApiApp = () => {
   const privateV1 = new Hono<ApiEnv>()
   privateV1.use('*', originMiddleware)
   privateV1.use('*', requireAuth)
-  // T05で統計付き一覧に置き換える。T03は認証後の空一覧契約を維持する。
-  privateV1.get('/words', (c) => c.json({ items: [], nextCursor: null }))
   privateV1.route('/', createWordRoutes())
   app.route('/api/v1', privateV1)
 
