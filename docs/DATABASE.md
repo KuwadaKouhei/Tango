@@ -1,6 +1,6 @@
 # DB設計: Tango MVP
 
-> 状態: **T03でアプリテーブルmigration済み。OQ-009の削除方針は未決のままRESTRICT。**
+> 状態: **T05で一覧queryのindex利用を確認。OQ-009の削除方針は未決のままRESTRICT。**
 > 採用DB: Cloudflare D1（SQLite互換）
 > ORM/migration: Drizzle ORM / Drizzle Kit
 
@@ -335,3 +335,4 @@ LIMIT ?;
 - 2026-08-20 初版作成
 - 2026-08-20 T02で `auth@1.7.1` 生成の `user` / `session` / `account` / `verification` を反映
 - 2026-08-20 T03で `words` / `word_meanings` / `test_results` と `0001_minor_wasp` を追加。OQ-009は未決のままRESTRICT
+- 2026-08-21 T05で一覧SQLの `EXPLAIN QUERY PLAN` が `idx_words_user_created` を使うことをintegration testで確認。OQ-012は未決

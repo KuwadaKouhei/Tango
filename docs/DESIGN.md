@@ -181,7 +181,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 |---|---|---:|---|
 | GET/POST | `/api/auth/*` | Better Auth | login、callback、session、logout |
 | GET | `/api/v1/health` | 不要 | processのlivenessのみ。本文は `{ "status": "ok" }`。D1/AIの秘密や詳細を返さない |
-| GET | `/api/v1/words` | 必須 | 所有単語と意味・統計のcursor一覧。T02は認証確認用の空一覧 `{ items: [], nextCursor: null }`。実データはT05 |
+| GET | `/api/v1/words` | 必須 | 所有単語と意味・統計のcursor一覧 |
 | POST | `/api/v1/words` | 必須 | 単語と1件以上の意味を原子的に作成 |
 | GET | `/api/v1/words/:wordId` | 必須 | 所有単語の詳細 |
 | PUT | `/api/v1/words/:wordId` | 必須 | 単語・意味・ヒントを原子的に置換更新 |
@@ -224,6 +224,35 @@ POST /api/v1/words
 ```
 
 入力上限はOQ-018未決のため、初期guardrail候補（term 100、meaning 200、意味20件、hint 500）を防御値としてだけ適用する。`meanings`は空配列を拒否し、空白だけのmeaningも拒否する。request bodyに`userId`は無い。
+
+#### 単語一覧
+
+```http
+GET /api/v1/words?limit=20&cursor=opaque
+```
+
+```json
+200 OK
+{
+  "items": [
+    {
+      "id": "w_...",
+      "term": "issue",
+      "meanings": [
+        { "id": "wm_...", "meaning": "問題", "order": 0 },
+        { "id": "wm_...", "meaning": "論点", "order": 1 }
+      ],
+      "hint": "文脈で意味が変わる",
+      "stats": { "status": "unanswered", "correct": 0, "total": 0, "accuracy": null },
+      "createdAt": "2026-08-20T00:00:00.000Z",
+      "updatedAt": "2026-08-20T00:00:00.000Z"
+    }
+  ],
+  "nextCursor": null
+}
+```
+
+`limit`未指定は20。上限100はOQ-012未決のため防御値。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
 
 #### 翻訳候補
 
@@ -434,11 +463,13 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ## 9. 設計思想からの逸脱
 
-T03時点の意図的な限定:
+T05時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
-- `GET /api/v1/words` は空一覧stub。T04は `/words/new` からPOSTし、成功画面で登録内容を再表示する。統計は出さない。
-- 公開DELETEはOQ-009決定まで作らない。履歴ありwordはDB `RESTRICT`。
+- 公開DELETEはOQ-009決定まで作らない。履歴ありwordはDB `RESTRICT`。一覧の削除導線はdisabled。
+- 編集画面はT06までplaceholder。一覧から `/words/$wordId/edit` へは進める。
+- 一覧のサーバー状態はT04と同様に`fetch`1本。TanStack Queryは編集後のcache整合が必要になるT06で導入する。
+- カード色の補間はOQ-007/T14。T05は未回答と正解率を文字で示す。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 
@@ -456,3 +487,4 @@ T03時点の意図的な限定:
 - 2026-08-20 T02でGoogle OAuth、session Cookie、保護layout、private API 401を反映
 - 2026-08-20 T03でAppError、requestId、Origin、words/test_results schema、所有者隔離を反映
 - 2026-08-20 T04で単語登録画面と複数意味・ヒント保存を反映。OQ-018は未決のままguardrail候補を適用
+- 2026-08-21 T05で所有単語のcursor一覧と未回答/正解率を反映。OQ-012は未決のままページサイズ候補を防御値として適用

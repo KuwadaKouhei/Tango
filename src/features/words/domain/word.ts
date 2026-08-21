@@ -1,3 +1,5 @@
+import type { WordStats } from './word-stats'
+
 export type UserId = string
 export type WordId = string
 
@@ -40,3 +42,5 @@ export type NewWord = {
 }
 
 export type UpdatedWord = NewWord
+
+export type WordWithStats = Word & { stats: WordStats }
