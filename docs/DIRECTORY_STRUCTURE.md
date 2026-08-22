@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T06で単語編集画面とTanStack Queryを反映済み**
+> 状態: **T07で単語削除とCASCADEを反映済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -173,6 +173,7 @@ Tango/
 │   │   ├── update-word.test.ts
 │   │   ├── word-detail-api.test.ts    # HTTP契約。GET/PUT・404・Origin・422
 │   │   ├── word-duplicate-api.test.ts # HTTP契約。409・正規化同一視・UNIQUE違反変換
+│   │   ├── word-delete-api.test.ts    # HTTP契約。DELETE 204・cascade・404・Origin
 │   │   ├── study-api.test.ts
 │   │   └── translation-api.test.ts
 │   ├── contract/
@@ -320,3 +321,4 @@ composition-root -> application + infrastructure
 - 2026-08-21 T06で編集フォーム、word-fields、TanStack Queryを反映
 - 2026-08-21 T06のreviewで fetch-json、HTTP契約testとsigned-in-api harnessを反映
 - 2026-08-22 T16で word-duplicate-api.test.ts を追加
+- 2026-08-22 T07で word-delete-api.test.ts を追加

@@ -1,6 +1,6 @@
 # DB設計: Tango MVP
 
-> 状態: **T16でOQ-008の `UNIQUE(user_id, normalized_term)` を適用。OQ-009のCASCADEは未適用でT07が担当（9.1）。**
+> 状態: **T07でOQ-009のCASCADEを適用し、公開DELETEを出した。**
 > 採用DB: Cloudflare D1（SQLite互換）
 > ORM/migration: Drizzle ORM / Drizzle Kit
 
@@ -15,7 +15,7 @@
 - 単語と複数意味の作成・置換更新はD1 `batch()`で原子的に行う。
 - 全所有データqueryに`user_id`を含める。
 - 統計は`test_results`から算出し、初期schemaに集計cacheを持たない。
-- 単語削除と履歴の関係はOQ-009が未決のため、初期migrationは履歴のあるwordを`RESTRICT`し、公開DELETE endpointは作らない。
+- 単語削除はOQ-009の決定どおり `test_results` を `ON DELETE CASCADE` にする。公開DELETEは所有者scopeで、非所有は404とする。
 
 ## 2. ER図
 
@@ -209,7 +209,8 @@ constraints/indexes:
 
 constraints:
 
-- `FOREIGN KEY (word_id, user_id) REFERENCES words(id, user_id) ON DELETE CASCADE` — result ownerとword ownerの不一致をDBでも拒否し、word削除時に履歴も消す。OQ-009の決定による。**未適用**。`0001_minor_wasp` は `ON DELETE RESTRICT` で適用済みのため、新しいmigrationで置き換える（9章）。
+- `FOREIGN KEY (word_id, user_id) REFERENCES words(id, user_id) ON DELETE CASCADE` — result ownerとword ownerの不一致をDBでも拒否し、word削除時に履歴も消す。OQ-009。T07の `0003_clean_the_executioner` で適用済み。
+- `FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE` — Drizzleが列 `.references()` から出す単体FK。複合FKだけCASCADEにしても、こちらの NO ACTION が削除を止めるため、両方をCASCADEにした。
 - `judge_type != 'ai'`の場合、provider/model/promptをNULLにする。T03のmigrationでCHECK `test_results_ai_metadata` として二重化した。
 - AIの手動修正機能はMVP未採用のため、`ai_judgement`や`final_judgement`を作らない。採用時は監査履歴を含む別設計にする。
 
@@ -312,29 +313,29 @@ GROUP BY word_id;
 - `words.deleted_at` は作らない。一覧scopeに削除済み条件を足さない。
 - 統計は履歴から導出するため、削除した単語の正解率・回答数は復元できない。
 
-初期migrationは`RESTRICT`（`drizzle/0001_minor_wasp.sql`）で適用済み。CASCADEへの変更と公開DELETE endpointはT07で実装する。それまで `deleteOwned` は隔離証明と履歴なし削除のcascade確認にだけ使う。
+初期migrationは`RESTRICT`（`drizzle/0001_minor_wasp.sql`）だった。T07の `0003_clean_the_executioner` でCASCADEへ置き換え、公開DELETEを出した。
 
 ## 9. Migration・初期データ
 
-### 9.1 予定しているmigration（OQ-008/009の反映）
+### 9.1 適用済みの追加migration（OQ-008/009）
 
-`0001_minor_wasp` は適用済みなので改変せず、新しい連番migrationで次の2点を入れる。Drizzle Kitの生成SQLをレビューしてから適用する。
+`0001_minor_wasp` は改変せず、連番migrationで足した。
 
 | 変更 | 対象 | 状態 | 注意点 |
 |---|---|---|---|
-| `UNIQUE(user_id, normalized_term)` 追加 | `words` | `0002_boring_kabuki` で適用（T16） | **既存の重複行があると失敗する**。適用前に重複を検出する。非UNIQUEの `idx_words_user_normalized_term` は同一列構成になるので削除する |
-| FK を `RESTRICT` → `CASCADE` | `test_results` | 未適用（T07） | 複合FK `(word_id, user_id)`。FKはテーブル制約なので再作成が要る。順序制御に `PRAGMA defer_foreign_keys` を使う |
+| `UNIQUE(user_id, normalized_term)` 追加 | `words` | `0002_boring_kabuki`（T16） | **既存の重複行があると失敗する**。適用前に重複を検出する。非UNIQUEの `idx_words_user_normalized_term` は同一列構成になるので削除する |
+| FK を `RESTRICT` / `NO ACTION` → `CASCADE` | `test_results` | `0003_clean_the_executioner`（T07） | 複合FKと単体 `word_id` FKの両方。テーブル再作成。Drizzle Kitは `PRAGMA foreign_keys=OFF` で囲む（`defer_foreign_keys` ではない） |
 
-`words` はテーブル再作成にならない。Drizzleはsqlite方言の `unique()` をテーブル制約ではなくUNIQUE indexとして出力するため、`0001_minor_wasp` の `words_id_user_id_unique` と同じく `CREATE UNIQUE INDEX` で足せる。生成された `0002_boring_kabuki` は2文だけである。
+`0002_boring_kabuki` は2文だけである。
 
 ```sql
 DROP INDEX `idx_words_user_normalized_term`;
 CREATE UNIQUE INDEX `words_user_id_normalized_term_unique` ON `words` (`user_id`,`normalized_term`);
 ```
 
-テーブル再作成が要るのは、FKという真のテーブル制約を変える `test_results`（T07）だけである。
+`0003_clean_the_executioner` は `__new_test_results` へデータをコピーして差し替える。列の意味は変えない。CHECKとindexも同じ定義で作り直す。
 
-適用前チェック:
+適用前チェック（T16）:
 
 ```sql
 -- 既存重複の検出。0件でなければUNIQUE追加は失敗する
@@ -346,12 +347,16 @@ FROM words GROUP BY user_id, normalized_term HAVING n > 1;
 
 local → preview → production の順に適用し、各段でintegration testを回す。productionはTime Travelの復帰ポイントを確認してから適用する。
 
-rollback: `0002_boring_kabuki` は index の入れ替えだけなので、逆順の2文で戻せる。データ移行はない。
+rollback:
+
+- `0002_boring_kabuki` は index の入れ替えだけなので、逆順の2文で戻せる。データ移行はない。
 
 ```sql
 DROP INDEX `words_user_id_normalized_term_unique`;
 CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_term`);
 ```
+
+- `0003_clean_the_executioner` はテーブル再作成のため、手で逆SQLを組むよりD1 Time Travelで戻す。CASCADEを外すと履歴ありwordの削除が再び失敗する。
 
 ### 9.2 手順
 
@@ -402,3 +407,4 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 - 2026-08-21 T06のreviewで一覧を3 queryへ分離。index記載をDDL実体（ASC）へ訂正し、IN句の50件分割とTEMP B-TREE非発生の表明を追加
 - 2026-08-22 OQ-008/009を決定。`words`へ`UNIQUE(user_id, normalized_term)`、`test_results`のFKをCASCADEへ変更する方針を記載。migrationは未適用でT07以降に実施
 - 2026-08-22 T16で `0002_boring_kabuki` を追加し `UNIQUE(user_id, normalized_term)` を適用。`words`はDrizzleがUNIQUE indexを出すためテーブル再作成にならない旨へ9.1を訂正し、rollback SQLを追加
+- 2026-08-22 T07で `0003_clean_the_executioner` を追加し `test_results` のFKをCASCADEへ。単体 `word_id` FKもCASCADEにしないとNO ACTION側が削除を止めることを明記
