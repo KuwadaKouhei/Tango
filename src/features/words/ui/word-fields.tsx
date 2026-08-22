@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { requestTranslationCandidates } from '../../translation/public'
+import { applyTranslationCandidate } from './apply-translation-candidate'
 import { INPUT_LIMITS } from '../domain/input-limits'
 
 export type MeaningDraft = {
@@ -31,6 +34,9 @@ export function WordFields({
   onMeaningsChange: (value: MeaningDraft[]) => void
   onHintChange: (value: string) => void
 }) {
+  const [isTranslating, setIsTranslating] = useState(false)
+  const [translationError, setTranslationError] = useState<string | null>(null)
+
   const moveMeaning = (index: number, offset: number) => {
     const target = index + offset
     if (target < 0 || target >= meanings.length) {
@@ -49,6 +55,34 @@ export function WordFields({
     onMeaningsChange(next)
   }
 
+  const handleTranslate = async () => {
+    setTranslationError(null)
+    setIsTranslating(true)
+    try {
+      const result = await requestTranslationCandidates(term)
+      if (!result.ok) {
+        setTranslationError(result.message)
+        return
+      }
+
+      const candidate = result.candidates[0]
+      if (!candidate) {
+        setTranslationError('翻訳結果が空でした。')
+        return
+      }
+
+      const applied = applyTranslationCandidate(meanings, candidate.text)
+      if (!applied.ok) {
+        setTranslationError(applied.message)
+        return
+      }
+
+      onMeaningsChange(applied.meanings)
+    } finally {
+      setIsTranslating(false)
+    }
+  }
+
   return (
     <>
       <p>
@@ -59,10 +93,23 @@ export function WordFields({
           name="term"
           value={term}
           maxLength={INPUT_LIMITS.termMaxChars}
-          onChange={(event) => onTermChange(event.target.value)}
+          onChange={(event) => {
+            setTranslationError(null)
+            onTermChange(event.target.value)
+          }}
           required
         />
       </p>
+      <p>
+        <button
+          type="button"
+          onClick={() => void handleTranslate()}
+          disabled={isTranslating || term.trim().length === 0}
+        >
+          {isTranslating ? '翻訳中…' : '翻訳する'}
+        </button>
+      </p>
+      {translationError ? <p role="alert">{translationError}</p> : null}
 
       <fieldset>
         <legend>日本語の意味（1件以上）</legend>

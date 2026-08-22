@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { createAuth } from '../../infrastructure/auth/better-auth'
 import { AppError } from '../../platform/app-error'
+import { createTranslationRoutes } from '../../features/translation/api/translation-routes'
 import { createWordRoutes } from '../../features/words/api/word-routes'
 import type { AuthBindings } from './bindings'
 import { handleApiError } from './error-handler'
@@ -36,6 +37,7 @@ export const createApiApp = () => {
   privateV1.use('*', originMiddleware)
   privateV1.use('*', requireAuth)
   privateV1.route('/', createWordRoutes())
+  privateV1.route('/', createTranslationRoutes())
   app.route('/api/v1', privateV1)
 
   return app

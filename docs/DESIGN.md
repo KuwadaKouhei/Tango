@@ -301,15 +301,23 @@ POST /api/v1/translation-candidates
 200 OK
 {
   "candidates": [
-    { "text": "問題" },
-    { "text": "論点" }
+    { "text": "問題" }
   ],
   "provider": "workers-ai",
-  "model": "configured-model"
+  "model": "@cf/meta/m2m100-1.2b"
 }
 ```
 
-候補取得ではwords/word_meaningsへ書き込まない。provider/modelは透明性のため返すが、secretや生promptは返さない。
+OQ-001（2026-08-22）:
+
+- providerはWorkers AI、modelは `@cf/meta/m2m100-1.2b`。候補は1件。追加の意味はフォームで手入力する。
+- `en` → `ja` 以外は `422 VALIDATION_FAILED`。termはtrim後1〜100文字。
+- 候補取得ではwords/word_meaningsへ書き込まない。provider/modelは透明性のため返すが、secretや生prompt、訳文全文はlogしない。
+- timeoutは8秒（AbortSignal）。サーバー側の自動retryはしない（Freeのneuronを二重消費しない）。
+- 認証ユーザーあたり 10回 / 60秒。isolate内スライディングウィンドウ。超えたら `429 RATE_LIMITED`。
+- provider応答が契約外なら `502 PROVIDER_INVALID_RESPONSE`。timeoutや一時障害は `503 AI_JUDGE_UNAVAILABLE`。
+
+通常CIは `env.AI.run` をlive callしない。adapterはfake runnerのcontract testで固定する。
 
 #### 問題取得
 
@@ -454,6 +462,8 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 - repository queryは必ず`WHERE id = ? AND user_id = ?`または所有者scopeを含める。
 - 将来拡張用token/CORSをMVPへ先回り実装しない。
 - secretは `.dev.vars`（local）またはWorkers secret。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけを置き、OAuth secretは置かない。
+- Workers AIは `wrangler.jsonc` の `ai.binding = "AI"`。model IDはコード定数 `TRANSLATION_LIMITS`。通常CIでは `env.AI.run` を呼ばない。
+- `wrangler.test.jsonc` には AI binding を置かない。Workers Vitest が remote proxy（CLOUDFLARE_API_TOKEN）を要求するため。integration testはfake `TranslationService` を注入する。
 - 共通errorは `AppError`。`requestId` は `cf-ray` または `req_`+UUID。公開errorにSQL/stack/secretを含めない。
 - mutation（POST/PUT/PATCH/DELETE）は `BETTER_AUTH_URL` と `Origin` を照合し、不一致なら `403 ORIGIN_NOT_ALLOWED`。GETはOrigin不要。
 
@@ -472,7 +482,7 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 ### 7.4 timeout / retry
 
 - D1の通常queryをアプリで無条件retryしない。
-- AI/翻訳はAbortSignalでtimeoutし、429/5xxのretryは最大回数・jitter・全体時間予算をOQ-001/002で決める。
+- AI/翻訳はAbortSignalでtimeoutする。翻訳は8秒。429/5xxのサーバー自動retryはしない。クライアントは失敗メッセージを見て再試行できる。
 - mutationの自動retryはidempotencyが保証できる場合だけにする。
 
 ### 7.5 observability
@@ -483,9 +493,10 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ### 7.6 rate limit / abuse
 
-- translationとAI回答は認証ユーザー単位でrate limitできるmiddleware境界を用意する。
-- 具体値は料金プラン・想定利用量の決定後に設定する。
-- 入力長、候補数、timeoutを必ず上限化し、denial-of-walletを抑える。
+- translationは認証ユーザー単位でisolate内スライディングウィンドウを適用する（10回 / 60秒）。
+- Cloudflare Rate Limiting製品は使わない（OQ-015 Workers Free）。複数isolate間では共有されない。
+- 入力長100文字、候補1件、timeout 8秒を上限化し、denial-of-walletを抑える。
+- AI判定の具体値はOQ-002決定後に設定する。
 
 ## 8. トレードオフ・代替案
 
@@ -501,25 +512,28 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ## 9. 設計思想からの逸脱
 
-T07時点の意図的な限定:
+T08時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
 - 公開DELETEはT07で適用済み。履歴もCASCADEで消える。確認操作なしではDELETEを送らない。
 - 重複拒否（OQ-008）はT16で適用済み。`existingWordId` は応答に含めるが、既存単語の編集画面へ誘導するUIは作らない（OQ-010はMVP外のまま）。
 - 単語のサーバー状態はTanStack Query。相対URLのfetchはclientだけで行い、SSRではqueryをenabledにしない。
-- clientのAPI呼び出しは `features/words/ui/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。204は本文なし成功として扱う。
+- clientのAPI呼び出しは `src/platform/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。204は本文なし成功として扱う。翻訳と単語で共用するため platform へ昇格した。
 - 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
 - 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
 - カード色の補間はOQ-007/T14。一覧は未回答と正解率を文字で示す。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
+- 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
+- 通常CIはWorkers AIをlive callしない。POC-06の品質確認はpreviewの人手作業。
 
 ## 10. 未決事項
 
-- `OPEN_QUESTIONS.md` OQ-001〜OQ-018を参照。
+- `OPEN_QUESTIONS.md` OQ-001〜OQ-018を参照。OQ-001とOQ-015は決定済み。
 - 特にOQ-003（AI障害）は履歴一貫性、OQ-005（出題数）はtest session要否へ直結する。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Google previewは人間がOAuth clientと `.dev.vars` を設定して確認する。
+- T08: 翻訳のlive Workers AI品質確認（POC-06）は人間がpreviewで行う。
 
 ## 11. 更新履歴
 
@@ -534,3 +548,4 @@ T07時点の意図的な限定:
 - 2026-08-22 OQ-008/009/018の決定を反映。`WORD_DUPLICATE` の409契約とDELETEのカスケード契約を追加。実装はT07以降
 - 2026-08-22 T16で重複拒否を実装。事前照合とUNIQUE違反の両方を409へ揃え、`existingWordId` は所有者scopeに限ることをtestで固定。逸脱節をT16時点へ更新
 - 2026-08-22 T07で公開DELETEとCASCADEを実装。204をfetch-jsonで本文なし成功とし、一覧は2段階確認のうえ取り直す。逸脱節をT07時点へ更新
+- 2026-08-22 T08で翻訳候補APIとWorkers AI adapterを実装。OQ-001/015の決定を反映。逸脱節をT08時点へ更新

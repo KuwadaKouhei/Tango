@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T05マージ済み。T06 PR中（feature/T06-word-edit）。人間review/merge後に次タスクへ進む。**
+> 状態: **T07マージ済み。T08 PR中（feature/T08-translation）。人間review/merge後に次タスクへ進む。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -25,8 +25,8 @@
 | T05 | 単語一覧と未回答統計 | AC-003,010 | T04 | OQ-012 | `feature/T05-word-list` | ✅マージ済み |
 | T06 | 単語・意味・ヒント編集 | AC-002,003 | T04,T05 | OQ-008,018 | `feature/T06-word-edit` | ✅マージ済み |
 | T16 | 単語の重複登録禁止 | AC-012 | T04,T06 | OQ-008（決定済み） | `feature/T16-word-duplicate` | ✅マージ済み |
-| T07 | 単語削除 | AC-003,013 | T06 | OQ-009（決定済み） | `feature/T07-word-delete` | 🟡PR中 |
-| T08 | 翻訳候補による登録補助 | AC-004 | T04 | **OQ-001,015必須** | `feature/T08-translation` | ⬜未着手 |
+| T07 | 単語削除 | AC-003,013 | T06 | OQ-009（決定済み） | `feature/T07-word-delete` | ✅マージ済み |
+| T08 | 翻訳候補による登録補助 | AC-004 | T04 | OQ-001,015（決定済み） | `feature/T08-translation` | 🟡PR中 |
 | T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | **OQ-005必須** | `feature/T09-random-study` | ⬜未着手 |
 | T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | **OQ-004,018必須** | `feature/T10-local-judgement` | ⬜未着手 |
 | T11 | 苦手優先出題 | AC-005 | T10 | **OQ-006,012必須** | `feature/T11-weak-study` | ⬜未着手 |
@@ -154,9 +154,10 @@
 
 完了条件:
 
-- POC-06でprovider/model/料金上限/候補件数を評価しOQ-001を決定する。
+- OQ-001/015は2026-08-22に決定済み（Workers AI `@cf/meta/m2m100-1.2b`、候補1件、term 100文字、10回/60秒、Workers Free）。
+- POC-06のlive品質比較は通常CI対象外。previewでの人手確認を残す。
 - 翻訳だけではwords/meaningsへ一切書き込まない。
-- 候補を選択・編集・削除・追加入力できる。
+- 候補をフォームへ反映し、編集・削除・追加入力できる。
 - timeout、429、provider schema不正を共通errorへ変換する。
 - rate limitと入力上限を適用する。
 
@@ -304,3 +305,4 @@ T16の重複禁止はOQ-010の「重複警告」とは別物である。T16は�
 - 2026-08-22 T16をPR中へ更新。`0002_boring_kabuki` で UNIQUE(user_id, normalized_term) を適用
 - 2026-08-22 T16をマージ済み、T07を作業中へ更新
 - 2026-08-22 T07をPR中へ更新。`0003_clean_the_executioner` で CASCADE を適用し公開DELETEを出した
+- 2026-08-22 T07をマージ済み、T08をPR中へ更新。OQ-001/015を決定済みとして翻訳候補を実装

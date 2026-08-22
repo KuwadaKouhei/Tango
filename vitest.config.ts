@@ -22,6 +22,10 @@ export default defineConfig({
   ],
   test: {
     setupFiles: ['./tests/setup/apply-migrations.ts'],
-    include: ['src/**/*.test.ts', 'tests/integration/**/*.test.ts'],
+    include: [
+      'src/**/*.test.ts',
+      'tests/integration/**/*.test.ts',
+      'tests/contract/**/*.test.ts',
+    ],
   },
 })

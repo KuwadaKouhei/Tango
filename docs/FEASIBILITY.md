@@ -1,7 +1,7 @@
 # 実現可能性調査: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **条件付きで実現可能。POC-01/02は合格。**
+> 状態: **条件付きで実現可能。POC-01/02は合格。翻訳はOQ-001でWorkers AIを採用。POC-06 liveは未実施。**
 > 主要技術は公式ドキュメントとnpmレジストリの当日スナップショットで確認した。バージョンと料金は実装開始時・本番公開前に再確認する。
 
 ## 1. 概要・調査範囲
@@ -25,7 +25,7 @@
 | ユーザー分離・単語CRUD・複数意味 | 実現可能 | RDBのFK、API所有者スコープ、D1 batchで整合性を持たせられる |
 | 完全一致・正規化一致 | 実現可能 | TypeScriptの決定的な純粋関数で実装・単体テスト可能 |
 | AI意味判定 | 条件付き可能 | Workers AI等で実装可能だが、モデル、構造化出力、品質、料金、タイムアウト、障害時仕様が未決 |
-| 翻訳候補 | 条件付き可能 | Workers AIには翻訳タスクがあるが、候補品質・件数・料金とプロバイダーが未決 |
+| 翻訳候補 | 実現可能（品質はpreview確認） | Workers AI `@cf/meta/m2m100-1.2b` を採用。候補1件。live品質は人手確認 |
 | ランダム／苦手優先出題 | 条件付き可能 | 履歴集計と重み付き抽選で可能。重み、未回答、重複、件数の仕様決定が必要 |
 | 履歴・正解率・カード色 | 実現可能 | 履歴集計で算出可能。正確な色・アクセシビリティ基準のみ未決 |
 | 将来Chrome拡張から同じAPIを利用 | 条件付き可能 | REST境界は再利用可能。拡張向け認証、CORS、権限は将来PoCが必要 |
@@ -40,7 +40,7 @@
 - TanStack Start公式ホスティングガイドはCloudflareを公式パートナーとして挙げ、`@cloudflare/vite-plugin` と `wrangler` を使う配備手順を示している。
 - TanStack Startの現行製品ページは **RC** と表示されており、API・生成物・統合手順の変化を前提にlockfile固定が必要である。
 - Startのserver entryはWinterCG互換の `fetch(Request)` 形式でカスタマイズできる。HonoもCloudflare Workers上で `app.fetch` を提供するため、同一entryで `/api/*` をHonoへ、それ以外をStartへ委譲できると判断する。これは公式仕様を組み合わせた**設計上の推論**であり、T01で実ビルド・preview・deployを検証する。
-- Cloudflare WorkersはFreeでCPU 10ms、メモリ128MB、50 subrequests/request等の制限がある。SSRとAI呼び出しを含むため、Freeのみを前提にせず計測する。
+- Cloudflare WorkersはFreeプランで運用する（OQ-015、2026-08-22）。SSRとAI呼び出しはCPU 10ms等の制約があるため、翻訳の待ちはWorkers AI側のwall clockとし、8秒で打ち切る。
 
 出典:
 
@@ -81,8 +81,9 @@
 ### 3.4 AI意味判定・翻訳
 
 - Workers AIはWorkers bindingから利用でき、テキスト生成・翻訳を含むタスクを提供する。
-- 2026-08-20時点の標準上限例はText Generation 300 requests/min、Translation 720 requests/minだが、モデル別制限・料金・プラン要件は変動する。
-- AIの意味一致は決定的ではない。構造化出力のschema検証、temperature抑制、短いprompt、タイムアウト、結果の説明可能性、外部呼び出しモックが必要である。
+- 翻訳は `@cf/meta/m2m100-1.2b` を採用した（OQ-001）。1リクエスト1訳文のため候補は1件。入力100文字、ユーザーあたり10回/60秒、timeout 8秒、自動retryなし。
+- 2026-08-20時点の標準上限例はText Generation 300 requests/min、Translation 720 requests/minだが、モデル別制限・料金・プラン要件は変動する。MVPのアプリ側limitはこれより十分小さい。
+- AIの意味一致は決定的ではない。構造化出力のschema検証、temperature抑制、短いprompt、タイムアウト、結果の説明可能性、外部呼び出しモックが必要である。OQ-002までmodelを固定しない。
 - 文字列一致でAIを呼ばない設計はコスト・遅延・誤判定を減らし、要件に整合する。
 
 出典:
@@ -123,13 +124,13 @@
 | POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live Google previewは未実施**（OAuth client と `.dev.vars` は人間設定） |
 | POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 **コード側合格**（2026-08-20: CHECK、複合owner FK、batch rollback、履歴ありRESTRICT、2ユーザー隔離）。**preview D1への人手適用は未実施** |
 | POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T11 |
-| POC-06 翻訳候補 | 代表単語セットで候補品質、複数候補、遅延、料金を比較 | T08 |
+| POC-06 翻訳候補 | 代表単語セットで候補品質、遅延、料金を比較 | T08 **コード側合格**（2026-08-22: contract mockで成功/502/503/429を固定。**live Workers AIの人手品質比較は未実施**） |
 
 ## 6. 技術比較と推奨
 
 - **ホスティング**: 要件でCloudflareが決定済み。Startの公式Cloudflare手順を第一候補にし、RC統合が失敗した場合だけHono Worker + SPA等への差し戻しを検討する。
 - **認証**: Better Authが決定済み。T02で `@better-auth/drizzle-adapter`（`transaction: false`）を採用し、D1 native adapterは使わない。live Google loginは人間がOAuth clientを設定してpreview確認する。
-- **AI/翻訳**: Workers AIを最初の比較対象とするが、ポートを固定しない。品質または料金条件を満たさなければDeepL、Google Translation、他LLMへ交換する。
+- **AI/翻訳**: 翻訳はWorkers AI `@cf/meta/m2m100-1.2b` を採用（OQ-001）。portは残し、品質または料金条件を満たさなければ差し替える。AI判定は未決。
 - **テスト**: Node上だけのVitestではWorkers固有差を見逃すため、CloudflareのWorkers Vitest integrationを採用する。
 
 ## 7. 前提・制約
@@ -141,7 +142,7 @@
 
 ## 8. 差し戻し提案
 
-困難判定はないため要件全体の差し戻しは不要。ただし OQ-001〜OQ-009、OQ-012〜OQ-015 は記載したタスク期限までに決める。PoCが不合格なら、該当技術またはMVP範囲を要件フェーズへ差し戻す。
+困難判定はないため要件全体の差し戻しは不要。ただし OQ-002〜OQ-007、OQ-010、OQ-012 は記載したタスク期限までに決める。PoCが不合格なら、該当技術またはMVP範囲を要件フェーズへ差し戻す。
 
 ## 9. 更新履歴
 
@@ -149,3 +150,4 @@
 - 2026-08-20 POC-01/02をT01で合格と記録
 - 2026-08-20 POC-03のコード側合格と live Google 未実施を記録
 - 2026-08-20 POC-04のコード側合格と preview D1 人手適用未実施を記録
+- 2026-08-22 OQ-001/015決定。POC-06はcontract mockをコード側合格、live品質比較は未実施

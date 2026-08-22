@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T07（単語削除）PR中。ブランチは `feature/T07-word-delete`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T08（翻訳候補）作業中。ブランチは `feature/T08-translation`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -122,7 +122,8 @@
 
 - OQ-013/014/016/017: 承認済み。
 - OQ-008/009/018: 2026-08-22に決定済み。決定内容は `docs/OPEN_QUESTIONS.md` 3節。
-- T01〜T06, T16: マージ済み。T07はPR中。
+- OQ-001/015: 2026-08-22に決定済み。Workers AI `@cf/meta/m2m100-1.2b`、候補1件、term 100文字、rate limit、Workers Free。
+- T01〜T07, T16: マージ済み。T08はPR中。
 - OQ-008は `0002_boring_kabuki` で適用済み。重複登録は409で拒否する。
-- OQ-009は `0003_clean_the_executioner` でCASCADE適用中（T07）。
+- OQ-009は `0003_clean_the_executioner` でCASCADE適用済み。
 - 各タスク前: TASKSの意思決定列にあるOQ。

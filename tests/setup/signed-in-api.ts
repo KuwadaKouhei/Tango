@@ -1,9 +1,12 @@
 import { Hono } from 'hono'
+import { createTranslationRoutes } from '../../src/features/translation/api/translation-routes'
+import type { TranslationService } from '../../src/features/translation/domain/translation-service'
 import { createWordRoutes } from '../../src/features/words/api/word-routes'
 import type { AuthBindings } from '../../src/server/api/bindings'
 import { handleApiError } from '../../src/server/api/error-handler'
 import type { AuthVariables } from '../../src/server/api/middleware/auth'
 import { originMiddleware } from '../../src/server/api/middleware/origin'
+import type { SlidingWindowRateLimiter } from '../../src/server/api/middleware/rate-limit'
 import type { RequestIdVariables } from '../../src/server/api/middleware/request-id'
 import { requestIdMiddleware } from '../../src/server/api/middleware/request-id'
 
@@ -17,7 +20,14 @@ type SignedInApiEnv = {
  * 未認証の拒否は auth.test.ts の401で担保し、ここでは requireAuth だけ差し替えて
  * Origin検証・error contract・応答JSONというHTTP契約を本番moduleのまま検証する。
  */
-export const createSignedInApi = (actorUserId: string) => {
+export const createSignedInApi = (
+  actorUserId: string,
+  deps: {
+    translationService?: TranslationService
+    rateLimiter?: SlidingWindowRateLimiter
+    timeoutMs?: number
+  } = {},
+) => {
   const app = new Hono<SignedInApiEnv>()
 
   app.use('*', requestIdMiddleware)
@@ -30,6 +40,7 @@ export const createSignedInApi = (actorUserId: string) => {
     await next()
   })
   privateV1.route('/', createWordRoutes())
+  privateV1.route('/', createTranslationRoutes(deps))
   app.route('/api/v1', privateV1)
 
   return app

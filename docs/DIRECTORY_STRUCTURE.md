@@ -71,10 +71,10 @@ Tango/
 │   │   │   │   ├── word-routes.ts
 │   │   │   │   └── word-schemas.ts
 │   │   │   ├── ui/
-│   │   │   │   ├── fetch-json.ts
 │   │   │   │   ├── create-word-request.ts
 │   │   │   │   ├── word-create-form.tsx
 │   │   │   │   ├── word-fields.tsx
+│   │   │   │   ├── apply-translation-candidate.ts
 │   │   │   │   ├── word-edit-form.tsx
 │   │   │   │   ├── word-detail-request.ts
 │   │   │   │   ├── word-query-keys.ts
@@ -84,9 +84,15 @@ Tango/
 │   │   │   └── public.ts
 │   │   ├── translation/
 │   │   │   ├── domain/
+│   │   │   │   ├── translation-limits.ts
+│   │   │   │   └── translation-service.ts
 │   │   │   ├── application/
+│   │   │   │   └── get-translation-candidates.ts
 │   │   │   ├── api/
+│   │   │   │   ├── translation-routes.ts
+│   │   │   │   └── translation-schemas.ts
 │   │   │   ├── ui/
+│   │   │   │   └── request-translation-candidates.ts
 │   │   │   └── public.ts
 │   │   ├── study/
 │   │   │   ├── domain/
@@ -129,6 +135,7 @@ Tango/
 │   ├── platform/
 │   │   ├── app-error.ts
 │   │   ├── clock.ts
+│   │   ├── fetch-json.ts
 │   │   └── ids.ts
 │   ├── routes/
 │   │   ├── __root.tsx
@@ -175,7 +182,7 @@ Tango/
 │   │   ├── word-duplicate-api.test.ts # HTTP契約。409・正規化同一視・UNIQUE違反変換
 │   │   ├── word-delete-api.test.ts    # HTTP契約。DELETE 204・cascade・404・Origin
 │   │   ├── study-api.test.ts
-│   │   └── translation-api.test.ts
+│   │   └── translation-api.test.ts    # HTTP契約。200・DB未更新・422・429・502・503
 │   ├── contract/
 │   │   ├── semantic-judge.contract.test.ts
 │   │   └── translation.contract.test.ts
@@ -322,3 +329,4 @@ composition-root -> application + infrastructure
 - 2026-08-21 T06のreviewで fetch-json、HTTP契約testとsigned-in-api harnessを反映
 - 2026-08-22 T16で word-duplicate-api.test.ts を追加
 - 2026-08-22 T07で word-delete-api.test.ts を追加
+- 2026-08-22 T08で translation feature、Workers AI adapter、fetch-jsonのplatform昇格、contract testを追加
