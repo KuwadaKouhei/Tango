@@ -463,6 +463,7 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 - 将来拡張用token/CORSをMVPへ先回り実装しない。
 - secretは `.dev.vars`（local）またはWorkers secret。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけを置き、OAuth secretは置かない。
 - Workers AIは `wrangler.jsonc` の `ai.binding = "AI"`。model IDはコード定数 `TRANSLATION_LIMITS`。通常CIでは `env.AI.run` を呼ばない。
+- `wrangler.test.jsonc` には AI binding を置かない。Workers Vitest が remote proxy（CLOUDFLARE_API_TOKEN）を要求するため。integration testはfake `TranslationService` を注入する。
 - 共通errorは `AppError`。`requestId` は `cf-ray` または `req_`+UUID。公開errorにSQL/stack/secretを含めない。
 - mutation（POST/PUT/PATCH/DELETE）は `BETTER_AUTH_URL` と `Origin` を照合し、不一致なら `403 ORIGIN_NOT_ALLOWED`。GETはOrigin不要。
 

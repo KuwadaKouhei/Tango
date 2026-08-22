@@ -1,5 +1,4 @@
-import { env } from 'cloudflare:test'
-import { SELF } from 'cloudflare:test'
+import { env, SELF } from 'cloudflare:test'
 import { describe, expect, it } from 'vitest'
 import { createWord } from '../../src/features/words/application/manage-word'
 import type { TranslationService } from '../../src/features/translation/domain/translation-service'

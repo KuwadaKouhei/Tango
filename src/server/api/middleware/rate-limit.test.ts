@@ -4,7 +4,7 @@ import { createSlidingWindowRateLimiter } from './rate-limit'
 
 describe('createSlidingWindowRateLimiter', () => {
   it('上限を超えたら429にする', () => {
-    let now = 1_000
+    const now = 1_000
     const limiter = createSlidingWindowRateLimiter({
       limit: 2,
       windowMs: 60_000,

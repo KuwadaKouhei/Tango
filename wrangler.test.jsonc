@@ -6,9 +6,6 @@
   // Startの仮想module `@tanstack/react-start/server-entry` は
   // vitest-pool-workers の静的解析で解決できないため、dispatch検証用の実ファイルを使う。
   "main": "tests/workers/dispatch-worker.ts",
-  "ai": {
-    "binding": "AI",
-  },
   "d1_databases": [
     {
       "binding": "DB",

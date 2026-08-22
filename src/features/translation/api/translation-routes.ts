@@ -7,10 +7,10 @@ import { getTranslationCandidates } from '../application/get-translation-candida
 import { createAppServices } from '../../../server/composition-root'
 import type { AuthBindings } from '../../../server/api/bindings'
 import type { AuthVariables } from '../../../server/api/middleware/auth'
+import type { SlidingWindowRateLimiter } from '../../../server/api/middleware/rate-limit'
 import {
   createSlidingWindowRateLimiter,
   createUserRateLimitMiddleware,
-  type SlidingWindowRateLimiter,
 } from '../../../server/api/middleware/rate-limit'
 import type { RequestIdVariables } from '../../../server/api/middleware/request-id'
 import { translationCandidatesBodySchema } from './translation-schemas'
