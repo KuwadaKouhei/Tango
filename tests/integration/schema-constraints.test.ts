@@ -81,12 +81,12 @@ describe('D1 schema constraints', () => {
     expect(leftover).toBeNull()
   })
 
-  it('履歴があるwordのDELETEはRESTRICTで拒否する', async () => {
-    await insertTestUser(env.DB, 'user-restrict')
+  it('履歴があるwordのDELETEはCASCADEで履歴も消す', async () => {
+    await insertTestUser(env.DB, 'user-cascade')
     const services = createAppServices(env)
     const word = await createWord({
       command: {
-        actorUserId: 'user-restrict',
+        actorUserId: 'user-cascade',
         term: 'issue',
         meanings: ['問題'],
         hint: null,
@@ -97,7 +97,7 @@ describe('D1 schema constraints', () => {
 
     await services.testResultRepository.append({
       id: createOpaqueId('tr'),
-      userId: 'user-restrict',
+      userId: 'user-cascade',
       wordId: word.id,
       answer: '問題',
       isCorrect: true,
@@ -109,14 +109,23 @@ describe('D1 schema constraints', () => {
       createdAt: clock.nowEpochMs(),
     })
 
-    await expect(
-      services.wordRepository.deleteOwned('user-restrict', word.id),
-    ).rejects.toThrow()
-
-    const stillThere = await services.wordRepository.findOwnedById(
-      'user-restrict',
+    const deleted = await services.wordRepository.deleteOwned(
+      'user-cascade',
       word.id,
     )
-    expect(stillThere?.id).toBe(word.id)
+    expect(deleted).toBe(true)
+
+    const leftoverWord = await services.wordRepository.findOwnedById(
+      'user-cascade',
+      word.id,
+    )
+    expect(leftoverWord).toBeNull()
+
+    const leftoverHistory = await env.DB.prepare(
+      `SELECT id FROM test_results WHERE word_id = ?`,
+    )
+      .bind(word.id)
+      .all()
+    expect(leftoverHistory.results).toEqual([])
   })
 })

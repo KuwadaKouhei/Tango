@@ -22,6 +22,16 @@ export const fetchJson = async (
     }
   }
 
+  // 204は本文なし。json()すると失敗して日本語エラーへ落ちるため、空として扱う。
+  if (response.status === 204) {
+    return {
+      received: true,
+      ok: true,
+      status: 204,
+      body: null,
+    }
+  }
+
   try {
     return {
       received: true,

@@ -3,6 +3,7 @@ import { AppError } from '../../../platform/app-error'
 import { listOwnedWords } from '../application/list-owned-words'
 import {
   createWord,
+  deleteOwnedWord,
   getOwnedWord,
   updateWord,
 } from '../application/manage-word'
@@ -139,6 +140,17 @@ export const createWordRoutes = () => {
     })
 
     return c.json(toWordResponse(word), 200)
+  })
+
+  routes.delete('/words/:wordId', async (c) => {
+    const services = createAppServices(c.env)
+    await deleteOwnedWord({
+      actorUserId: c.get('actorUserId'),
+      wordId: c.req.param('wordId'),
+      wordRepository: services.wordRepository,
+    })
+
+    return c.body(null, 204)
   })
 
   return routes

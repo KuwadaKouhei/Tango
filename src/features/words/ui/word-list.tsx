@@ -1,10 +1,21 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useInfiniteQuery } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { formatWordStatsLabel } from './format-word-stats'
 import { listWordsRequest } from './list-words-request'
+import { deleteWordRequest } from './word-detail-request'
 import { isClientRuntime, wordQueryKeys } from './word-query-keys'
+import type { WordListResponse } from '../api/word-schemas'
+
+type WordListItem = WordListResponse['items'][number]
 
 export function WordList({ onSignOut }: { onSignOut: () => void }) {
+  const queryClient = useQueryClient()
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const listQuery = useInfiniteQuery({
     queryKey: wordQueryKeys.lists(),
     queryFn: async ({ pageParam }) => {
@@ -19,7 +30,21 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
     enabled: isClientRuntime(),
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteWordRequest,
+    onSuccess: async () => {
+      setConfirmingId(null)
+      // この画面が一覧を表示中なので、削除後は取り直す。
+      await queryClient.invalidateQueries({ queryKey: wordQueryKeys.all })
+    },
+  })
+
   const items = listQuery.data?.pages.flatMap((page) => page.items) ?? []
+  const deleteErrorMessage = !deleteMutation.isError
+    ? null
+    : deleteMutation.error instanceof Error
+      ? deleteMutation.error.message
+      : '削除に失敗しました。'
 
   return (
     <section>
@@ -48,28 +73,22 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
       ) : null}
 
       {items.map((word) => (
-        <article key={word.id} className="word-card">
-          <h2>{word.term}</h2>
-          <ol>
-            {word.meanings.map((meaning) => (
-              <li key={meaning.id}>{meaning.meaning}</li>
-            ))}
-          </ol>
-          <p className="word-card-stats">{formatWordStatsLabel(word.stats)}</p>
-          <p>
-            <Link to="/words/$wordId/edit" params={{ wordId: word.id }}>
-              編集
-            </Link>
-            {' / '}
-            <button
-              type="button"
-              disabled
-              title="削除方針が未決のため、まだ使えません"
-            >
-              削除
-            </button>
-          </p>
-        </article>
+        <WordCard
+          key={word.id}
+          word={word}
+          isConfirming={confirmingId === word.id}
+          isDeleting={deleteMutation.isPending && confirmingId === word.id}
+          errorMessage={confirmingId === word.id ? deleteErrorMessage : null}
+          onAskDelete={() => {
+            deleteMutation.reset()
+            setConfirmingId(word.id)
+          }}
+          onCancelDelete={() => {
+            deleteMutation.reset()
+            setConfirmingId(null)
+          }}
+          onConfirmDelete={() => deleteMutation.mutate(word.id)}
+        />
       ))}
 
       {listQuery.hasNextPage ? (
@@ -84,5 +103,69 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
         </p>
       ) : null}
     </section>
+  )
+}
+
+function WordCard({
+  word,
+  isConfirming,
+  isDeleting,
+  errorMessage,
+  onAskDelete,
+  onCancelDelete,
+  onConfirmDelete,
+}: {
+  word: WordListItem
+  isConfirming: boolean
+  isDeleting: boolean
+  errorMessage: string | null
+  onAskDelete: () => void
+  onCancelDelete: () => void
+  onConfirmDelete: () => void
+}) {
+  return (
+    <article className="word-card">
+      <h2>{word.term}</h2>
+      <ol>
+        {word.meanings.map((meaning) => (
+          <li key={meaning.id}>{meaning.meaning}</li>
+        ))}
+      </ol>
+      <p className="word-card-stats">{formatWordStatsLabel(word.stats)}</p>
+      <p>
+        <Link to="/words/$wordId/edit" params={{ wordId: word.id }}>
+          編集
+        </Link>
+        {' / '}
+        {isConfirming ? (
+          <>
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={onConfirmDelete}
+            >
+              {isDeleting ? '削除中…' : '削除する'}
+            </button>{' '}
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={onCancelDelete}
+            >
+              やめる
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={onAskDelete}>
+            削除
+          </button>
+        )}
+      </p>
+      {isConfirming ? (
+        <p role="status">
+          この単語と、この単語の回答履歴を削除します。取り消せません。
+        </p>
+      ) : null}
+      {errorMessage ? <p role="alert">{errorMessage}</p> : null}
+    </article>
   )
 }

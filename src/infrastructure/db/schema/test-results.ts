@@ -17,9 +17,11 @@ export const testResults = sqliteTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id),
+    // OQ-009: 単語削除で履歴も消す。単体FKと複合FKの両方をCASCADEにしないと、
+    // SQLiteは NO ACTION 側で削除を止める。
     wordId: text('word_id')
       .notNull()
-      .references(() => words.id),
+      .references(() => words.id, { onDelete: 'cascade' }),
     answer: text('answer').notNull(),
     isCorrect: integer('is_correct').notNull(),
     judgeType: text('judge_type').notNull(),
@@ -34,7 +36,7 @@ export const testResults = sqliteTable(
       name: 'test_results_word_owner_fk',
       columns: [table.wordId, table.userId],
       foreignColumns: [words.id, words.userId],
-    }).onDelete('restrict'),
+    }).onDelete('cascade'),
     index('idx_test_results_user_created').on(
       table.userId,
       table.createdAt,

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { AppError } from '../../src/platform/app-error'
 import {
   createWord,
+  deleteOwnedWord,
   getOwnedWord,
   updateWord,
 } from '../../src/features/words/application/manage-word'
@@ -87,6 +88,27 @@ describe('owner isolation', () => {
 
     const stillOwned = await services.wordRepository.findOwnedById(
       'list-a',
+      wordA.id,
+    )
+    expect(stillOwned?.id).toBe(wordA.id)
+  })
+
+  it('他ユーザーの単語をapplicationから消そうとしても404相当で残る', async () => {
+    await insertTestUser(env.DB, 'app-del-a')
+    await insertTestUser(env.DB, 'app-del-b')
+    const services = createAppServices(env)
+    const wordA = await createOwnedWord('app-del-a', 'keep', ['残す'])
+
+    await expect(
+      deleteOwnedWord({
+        actorUserId: 'app-del-b',
+        wordId: wordA.id,
+        wordRepository: services.wordRepository,
+      }),
+    ).rejects.toMatchObject({ code: 'WORD_NOT_FOUND', httpStatus: 404 })
+
+    const stillOwned = await services.wordRepository.findOwnedById(
+      'app-del-a',
       wordA.id,
     )
     expect(stillOwned?.id).toBe(wordA.id)

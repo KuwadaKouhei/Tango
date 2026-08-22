@@ -124,3 +124,20 @@ export const updateWord = async (input: {
     })),
   })
 }
+
+/**
+ * 履歴の明示削除はしない。OQ-009のCASCADEが原子性を担う。
+ */
+export const deleteOwnedWord = async (input: {
+  actorUserId: string
+  wordId: string
+  wordRepository: WordRepository
+}): Promise<void> => {
+  const deleted = await input.wordRepository.deleteOwned(
+    input.actorUserId,
+    input.wordId,
+  )
+  if (!deleted) {
+    throw AppError.wordNotFound()
+  }
+}

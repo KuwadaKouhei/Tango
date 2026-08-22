@@ -185,7 +185,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 | POST | `/api/v1/words` | 必須 | 単語と1件以上の意味を原子的に作成 |
 | GET | `/api/v1/words/:wordId` | 必須 | 所有単語の詳細 |
 | PUT | `/api/v1/words/:wordId` | 必須 | 単語・意味・ヒントを原子的に置換更新 |
-| DELETE | `/api/v1/words/:wordId` | 必須 | 単語と意味と回答履歴をカスケード削除（OQ-009）。T07で公開する |
+| DELETE | `/api/v1/words/:wordId` | 必須 | 単語と意味と回答履歴をカスケード削除（OQ-009） |
 | POST | `/api/v1/translation-candidates` | 必須 | DB保存せず日本語候補を返す |
 | POST | `/api/v1/study/questions` | 必須 | modeに従い次の問題を1件返す |
 | GET | `/api/v1/study/questions/:wordId/hint` | 必須 | 所有確認後にヒントを返す |
@@ -253,7 +253,9 @@ POST と PUT は、`normalizeTerm` の正規形が同一ユーザーの既存単
 DELETE /api/v1/words/:wordId
 ```
 
-`204 No Content`。非所有・未存在は `404 WORD_NOT_FOUND` で区別しない。DBのFK `ON DELETE CASCADE` により意味と回答履歴も消える。application側で履歴を明示削除せず、削除の原子性はDBに任せる。UIは実行前に確認操作を挟み、履歴も消えることを伝える。
+`204 No Content`。非所有・未存在は `404 WORD_NOT_FOUND` で区別しない。DBのFK `ON DELETE CASCADE` により意味と回答履歴も消える。application側で履歴を明示削除せず、削除の原子性はDBに任せる。UIは実行前に確認操作を挟み、履歴も消えることを伝える。`fetch-json` は204を本文なし成功として扱う。
+
+一覧の削除は2段階。最初の「削除」では送らず、確認文言（履歴も消える・取り消せない）を出したあとの「削除する」でDELETEする。`window.confirm` は使わない。削除成功後は一覧を表示中なので Query を取り直す。
 
 #### 単語一覧
 
@@ -399,7 +401,7 @@ Request
   -> 作成結果を再取得
 ```
 
-重複規則（OQ-008）と入力上限（OQ-018）は確定済み。削除挙動（OQ-009）はT07で実装する。
+重複規則（OQ-008）と入力上限（OQ-018）、削除のカスケード（OQ-009）は確定済み。
 
 保存の直前に所有者scopeで正規形を照合し、衝突したら保存へ進まず409にする。事前照合を通過してもD1のUNIQUE違反を捕まえて同じ409へ変換するため、同時実行でも2件目は保存されない。
 
@@ -499,13 +501,13 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ## 9. 設計思想からの逸脱
 
-T16時点の意図的な限定:
+T07時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
-- 公開DELETEはT07で作る。OQ-009決定済みだがmigration未適用のため、当面は履歴ありwordがDB `RESTRICT` で消せず、一覧の削除導線もdisabledのまま。
+- 公開DELETEはT07で適用済み。履歴もCASCADEで消える。確認操作なしではDELETEを送らない。
 - 重複拒否（OQ-008）はT16で適用済み。`existingWordId` は応答に含めるが、既存単語の編集画面へ誘導するUIは作らない（OQ-010はMVP外のまま）。
 - 単語のサーバー状態はTanStack Query。相対URLのfetchはclientだけで行い、SSRではqueryをenabledにしない。
-- clientのAPI呼び出しは `features/words/ui/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。
+- clientのAPI呼び出しは `features/words/ui/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。204は本文なし成功として扱う。
 - 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
 - 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
 - カード色の補間はOQ-007/T14。一覧は未回答と正解率を文字で示す。
@@ -515,7 +517,7 @@ T16時点の意図的な限定:
 ## 10. 未決事項
 
 - `OPEN_QUESTIONS.md` OQ-001〜OQ-018を参照。
-- 特にOQ-009（削除と履歴）は物理FK、OQ-003（AI障害）は履歴一貫性、OQ-005（出題数）はtest session要否へ直結する。
+- 特にOQ-003（AI障害）は履歴一貫性、OQ-005（出題数）はtest session要否へ直結する。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Google previewは人間がOAuth clientと `.dev.vars` を設定して確認する。
 
@@ -531,3 +533,4 @@ T16時点の意図的な限定:
 - 2026-08-21 T06のreviewで fetch-json、query paramのstrict検証、一覧3 query分離、SSR安全なDOM idを反映
 - 2026-08-22 OQ-008/009/018の決定を反映。`WORD_DUPLICATE` の409契約とDELETEのカスケード契約を追加。実装はT07以降
 - 2026-08-22 T16で重複拒否を実装。事前照合とUNIQUE違反の両方を409へ揃え、`existingWordId` は所有者scopeに限ることをtestで固定。逸脱節をT16時点へ更新
+- 2026-08-22 T07で公開DELETEとCASCADEを実装。204をfetch-jsonで本文なし成功とし、一覧は2段階確認のうえ取り直す。逸脱節をT07時点へ更新

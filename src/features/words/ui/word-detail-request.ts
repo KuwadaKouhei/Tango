@@ -40,6 +40,27 @@ const parseWordResponse = (
   return parsed.data.word
 }
 
+export const deleteWordRequest = async (wordId: string): Promise<void> => {
+  const outcome = await fetchJson(wordPath(wordId), {
+    method: 'DELETE',
+    credentials: 'same-origin',
+  })
+
+  if (!outcome.received) {
+    throw new WordRequestError(outcome.message)
+  }
+
+  if (outcome.status === 204) {
+    return
+  }
+
+  const parsed = apiErrorSchema.safeParse(outcome.body)
+  throw new WordRequestError(
+    parsed.success ? parsed.data.error.message : '削除に失敗しました。',
+    outcome.status === 404,
+  )
+}
+
 export const loadWordRequest = async (
   wordId: string,
 ): Promise<WordResponse['word']> => {
