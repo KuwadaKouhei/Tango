@@ -1,5 +1,5 @@
 import { apiErrorSchema, wordListResponseSchema } from '../api/word-schemas'
-import { fetchJson } from './fetch-json'
+import { fetchJson } from '../../../platform/fetch-json'
 import type { WordListResponse } from '../api/word-schemas'
 
 export type ListWordsClientResult =

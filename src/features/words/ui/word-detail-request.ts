@@ -1,6 +1,6 @@
 import { apiErrorSchema, wordResponseSchema } from '../api/word-schemas'
-import { fetchJson } from './fetch-json'
-import type { JsonFetchOutcome } from './fetch-json'
+import { fetchJson } from '../../../platform/fetch-json'
+import type { JsonFetchOutcome } from '../../../platform/fetch-json'
 import type { WordResponse } from '../api/word-schemas'
 
 export class WordRequestError extends Error {

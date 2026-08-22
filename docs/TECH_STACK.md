@@ -1,7 +1,7 @@
 # 技術スタック選定: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **T06で `@tanstack/react-query` 5.101.4 をlockfileへ追加済み（OQ-013/OQ-014）**
+> 状態: **T06で `@tanstack/react-query` 5.101.4 をlockfileへ追加済み（OQ-013/OQ-014）。T08で翻訳をWorkers AI `@cf/meta/m2m100-1.2b` に固定（OQ-001）**
 > 要件で指定された中核スタックを尊重し、公式CLIとnpmレジストリで互換セットを確認した。以後の更新は独立PRでbuild/testを再実行する。
 
 ## 1. 選定方針
@@ -28,7 +28,7 @@
 | DB | Cloudflare D1 | 要件指定、Workers binding、SQLite互換RDB、FK |
 | ORM/migration | Drizzle ORM + Drizzle Kit | D1公式対応、TypeScript schema、SQLを隠し過ぎない |
 | 認証 | Better Auth + Google OAuth | 要件指定、Google social provider、D1/Drizzle対応 |
-| AI/翻訳 | port + 初期比較対象Workers AI | 同一Cloudflare基盤、binding利用。採用model/providerはPoC後 |
+| AI/翻訳 | port + Workers AI `@cf/meta/m2m100-1.2b` | 同一Cloudflare基盤、binding利用。翻訳はT08で固定。AI判定は未決 |
 | build/deploy | Vite + Cloudflare Vite plugin + Wrangler | TanStack Start公式Cloudflare手順 |
 | package manager | pnpm | lockfile、厳格な依存、workspace拡張余地 |
 | unit/integration | Vitest + Workers Vitest integration | Workers runtimeとD1 migrationをローカル検証 |
@@ -134,14 +134,14 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 
 | 候補 | 統合 | 品質/機能 | ロックイン | 判定 |
 |---|---|---|---|---|
-| Workers AI | bindingで低運用 | modelごとに評価必要 | Cloudflare model ID | **最初のPoC対象** |
-| DeepL | 翻訳に強い | 翻訳用途へ明確 | 外部API/料金 | 翻訳比較候補 |
-| Google Translation | 翻訳API | 成熟 | GCP追加 | 翻訳比較候補 |
+| Workers AI `@cf/meta/m2m100-1.2b` | bindingで低運用 | 1リクエスト1訳文。live品質はpreview人手 | Cloudflare model ID | **翻訳で採用（OQ-001）** |
+| DeepL | 翻訳に強い | 翻訳用途へ明確 | 外部API/料金 | 翻訳の交換候補 |
+| Google Translation | 翻訳API | 成熟 | GCP追加 | 翻訳の交換候補 |
 | 外部LLM API | AI判定品質を選べる | model/料金/データ取扱差 | provider依存 | AI比較候補 |
 
-採用理由: providerは未決定のため、`SemanticJudge`と`TranslationService` portを採用技術として確定し、Workers AIは最初のadapter候補に留める。POC-05/06なしにmodelを固定しない。
+採用理由: `TranslationService` / `SemanticJudge` portは交換境界として残す。翻訳adapterの最初の実装はWorkers AI `@cf/meta/m2m100-1.2b`（OQ-001）。AI判定のmodelはPOC-05/OQ-002まで固定しない。
 
-出典: [Workers AI](https://developers.cloudflare.com/workers-ai/)、[Limits](https://developers.cloudflare.com/workers-ai/platform/limits/)、[Pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
+出典: [Workers AI](https://developers.cloudflare.com/workers-ai/)、[m2m100-1.2b](https://developers.cloudflare.com/workers-ai/models/m2m100-1.2b/)、[Limits](https://developers.cloudflare.com/workers-ai/platform/limits/)、[Pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
 
 ### 4.6 テスト
 
@@ -189,3 +189,4 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 - 2026-08-20 T02で Better Auth 1.7.1 / Drizzle 0.45.2 / drizzle-kit 0.31.10 を固定
 - 2026-08-20 T03で zod 4.4.3 を固定
 - 2026-08-21 T06で `@tanstack/react-query` 5.101.4 を固定
+- 2026-08-22 T08で翻訳providerを Workers AI `@cf/meta/m2m100-1.2b` に固定（OQ-001）。プランはWorkers Free（OQ-015）

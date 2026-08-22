@@ -6,7 +6,7 @@
 
 | ID | 論点 | 主な選択肢 | 決定期限 | 状態 |
 |---|---|---|---|---|
-| OQ-001 | 翻訳プロバイダー、モデル、候補件数、料金上限 | Workers AI / DeepL / Google Translation / その他 | T08着手前 | 未決 |
+| OQ-001 | 翻訳プロバイダー、モデル、候補件数、料金上限 | Workers AI / DeepL / Google Translation / その他 | T08着手前 | 決定済み（Workers AI / `@cf/meta/m2m100-1.2b` / 候補1件） |
 | OQ-002 | AI判定プロバイダー、モデル、プロンプト、再試行、タイムアウト | Workers AIを含む交換可能な候補 | T11着手前 | 未決 |
 | OQ-003 | AI障害時の回答扱い | 未採点で再試行 / 不正解として保存 / AIなしで不正解 | T11着手前 | 未決 |
 | OQ-004 | 正規化の追加範囲 | 句読点・記号・かなカナ・長音・表記ゆれ | T09着手前 | 未決 |
@@ -25,7 +25,7 @@
 |---|---|---|---|---|
 | OQ-013 | TanStack Start RC採用可否 | 公式Cloudflare例でPoCし、SSR・Hono分岐・認証・D1・本番ビルドを通してから固定 | T01完了時 | 決定済み（採用） |
 | OQ-014 | 依存バージョン | 2026-08-20の候補を `TECH_STACK.md` に記録し、T01で互換セットをlockfileへ固定 | T01完了時 | 決定済み |
-| OQ-015 | Cloudflare料金プラン・上限 | MVP利用量とWorkers AIモデル要件を見積もり、Free/Paidを選ぶ | T03完了時 | 未決 |
+| OQ-015 | Cloudflare料金プラン・上限 | MVP利用量とWorkers AIモデル要件を見積もり、Free/Paidを選ぶ | T03完了時 | 決定済み（Workers Free） |
 | OQ-016 | 設計・実装・テスト思想 | 個人MVP向け推奨デフォルトを暫定採用。人間レビュー後に承認へ変更 | 実装着手前 | 決定済み |
 | OQ-017 | Git/GitHub運用 | Git管理と公開repository `KuwadaKouhei/Tango` は決定済み。GitHub Flow、Conventional Commits、1タスク=1PRは暫定案 | 実装着手前 | 決定済み |
 | OQ-018 | 入力件数・文字数上限 | term 100、meaning 200、意味20件、hint/answer 500文字を初期guardrail候補とする | T05着手前 | 決定済み（候補値をそのまま確定） |
@@ -86,6 +86,34 @@ GitHub Flow、Conventional Commits、1タスク=1ブランチ=1PR、AIはmerge�
 
 上限はDBのCHECK制約で二重化しない。Zod schemaとUIの `maxLength` だけで守り、将来の見直しでmigrationが要らない状態を保つ。長さ0の拒否は既存のCHECKを維持する。
 
+### OQ-001（2026-08-22）
+
+翻訳は **Workers AI** の **`@cf/meta/m2m100-1.2b`** を使う。利用者決定。
+
+| 項目 | 確定値 | 理由 |
+|---|---|---|
+| provider | Workers AI | 同一Cloudflare基盤。bindingでsecretを増やさない |
+| model | `@cf/meta/m2m100-1.2b` | 公式の翻訳モデル。1リクエスト1訳文 |
+| 候補件数 | 1 | モデルが単一 `translated_text` を返す。追加の意味はフォームで手入力する |
+| 入力上限 | term 100文字 | OQ-018と同じ。denial-of-wallet抑制 |
+| 言語 | `en` → `ja` のみ | TRANS-001。他方向は422 |
+| timeout | 8秒（wall clock、AbortSignal） | フォーム操作の待ち上限。自動retryしない |
+| rate limit | 認証ユーザーあたり 10回 / 60秒 | isolate内スライディングウィンドウ。連打とneuron消費を抑える |
+
+Workers AIへの実呼び出しは `source_lang: "english"` / `target_lang: "japanese"`（公式TypeScript例に合わせる）。HTTP APIは `sourceLanguage: "en"` / `targetLanguage: "ja"`。
+
+CloudflareのRate Limiting製品は使わない（OQ-015がFreeのため）。limitはWorker isolate内だけ有効で、複数isolate間では共有されない。個人MVPでは許容する。
+
+POC-06のlive品質比較（代表単語セットでの人手確認）はこの環境では未実施。通常CIはcontract mockのみ。previewでの人手確認を残す。品質が足りなければportを保ったままadapterを差し替える。
+
+### OQ-015（2026-08-22）
+
+Cloudflareの料金プランは **Workers Free** とする。利用者決定。
+
+- Paid専用のRate Limiting bindingやUnbound CPU前提の処理をMVPへ入れない。
+- Workers AIはFreeのneuron枠内で使う前提とし、入力長・timeout・ユーザー単位rate limitで消費を抑える。
+- D1 Freeの容量上限は従来どおり。規模目標はOQ-012が未決のまま。
+
 ## 4. 更新手順
 
 1. 決定者が選択肢と理由を本書へ記録する。
@@ -102,3 +130,4 @@ GitHub Flow、Conventional Commits、1タスク=1ブランチ=1PR、AIはmerge�
 - 2026-08-21 T05着手。OQ-008/018は未決のまま。重複単語は別カードとして並べる。OQ-012も未決のまま、DESIGNのcursor既定20/上限100を防御値としてだけ使う
 - 2026-08-21 T06着手。OQ-008/018は未決のまま。OQ-009は未決のため公開DELETEは作らない
 - 2026-08-22 OQ-008を「ユーザー単位で禁止・正規形で判定」、OQ-009を「カスケード削除」、OQ-018を「候補値のまま確定」として決定済みへ更新
+- 2026-08-22 OQ-001をWorkers AI `@cf/meta/m2m100-1.2b`・候補1件・入力100文字・rate limit、OQ-015をWorkers Freeとして決定済みへ更新

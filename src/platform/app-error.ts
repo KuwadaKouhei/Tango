@@ -6,6 +6,9 @@ export type AppErrorCode =
   | 'WORD_DUPLICATE'
   | 'NOT_FOUND'
   | 'VALIDATION_FAILED'
+  | 'RATE_LIMITED'
+  | 'PROVIDER_INVALID_RESPONSE'
+  | 'AI_JUDGE_UNAVAILABLE'
   | 'INTERNAL_ERROR'
 
 export class AppError extends Error {
@@ -13,7 +16,8 @@ export class AppError extends Error {
 
   private constructor(
     readonly code: AppErrorCode,
-    readonly httpStatus: 400 | 401 | 403 | 404 | 409 | 422 | 500,
+    readonly httpStatus:
+      400 | 401 | 403 | 404 | 409 | 422 | 429 | 500 | 502 | 503,
     message: string,
     readonly details: Record<string, unknown> = {},
     options?: { cause?: unknown },
@@ -70,6 +74,39 @@ export class AppError extends Error {
     details: Record<string, unknown> = {},
   ): AppError {
     return new AppError('VALIDATION_FAILED', 422, message, details)
+  }
+
+  static rateLimited(retryAfterSeconds?: number): AppError {
+    return new AppError(
+      'RATE_LIMITED',
+      429,
+      '翻訳の利用上限に達しました。しばらく待ってから再試行してください。',
+      retryAfterSeconds === undefined ? {} : { retryAfterSeconds },
+    )
+  }
+
+  static providerInvalidResponse(cause?: unknown): AppError {
+    return new AppError(
+      'PROVIDER_INVALID_RESPONSE',
+      502,
+      '外部サービスの応答形式が正しくありません。',
+      {},
+      { cause },
+    )
+  }
+
+  /**
+   * DESIGNのcode名。翻訳とAI判定の一時障害で共用する。
+   * 公開messageにprovider本文を載せない。
+   */
+  static aiJudgeUnavailable(cause?: unknown): AppError {
+    return new AppError(
+      'AI_JUDGE_UNAVAILABLE',
+      503,
+      '外部サービスが一時的に利用できません。しばらくしてから再試行してください。',
+      {},
+      { cause },
+    )
   }
 
   static internal(cause?: unknown): AppError {
