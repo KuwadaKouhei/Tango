@@ -1,4 +1,6 @@
 import { apiErrorSchema, wordResponseSchema } from '../api/word-schemas'
+import { fetchJson } from './fetch-json'
+import type { JsonFetchOutcome } from './fetch-json'
 import type { WordResponse } from '../api/word-schemas'
 
 export class WordRequestError extends Error {
@@ -11,20 +13,26 @@ export class WordRequestError extends Error {
   }
 }
 
-const parseWordResponse = async (
-  response: Response,
+const wordPath = (wordId: string): string =>
+  `/api/v1/words/${encodeURIComponent(wordId)}`
+
+const parseWordResponse = (
+  outcome: JsonFetchOutcome,
   fallbackMessage: string,
-): Promise<WordResponse['word']> => {
-  const body: unknown = await response.json()
-  if (!response.ok) {
-    const parsed = apiErrorSchema.safeParse(body)
+): WordResponse['word'] => {
+  if (!outcome.received) {
+    throw new WordRequestError(outcome.message)
+  }
+
+  if (!outcome.ok) {
+    const parsed = apiErrorSchema.safeParse(outcome.body)
     throw new WordRequestError(
       parsed.success ? parsed.data.error.message : fallbackMessage,
-      response.status === 404,
+      outcome.status === 404,
     )
   }
 
-  const parsed = wordResponseSchema.safeParse(body)
+  const parsed = wordResponseSchema.safeParse(outcome.body)
   if (!parsed.success) {
     throw new WordRequestError('単語データの形式が正しくありません。')
   }
@@ -35,11 +43,11 @@ const parseWordResponse = async (
 export const loadWordRequest = async (
   wordId: string,
 ): Promise<WordResponse['word']> => {
-  const response = await fetch(`/api/v1/words/${wordId}`, {
+  const outcome = await fetchJson(wordPath(wordId), {
     method: 'GET',
     credentials: 'same-origin',
   })
-  return parseWordResponse(response, '単語の取得に失敗しました。')
+  return parseWordResponse(outcome, '単語の取得に失敗しました。')
 }
 
 export const updateWordRequest = async (input: {
@@ -48,7 +56,7 @@ export const updateWordRequest = async (input: {
   meanings: string[]
   hint: string | null
 }): Promise<WordResponse['word']> => {
-  const response = await fetch(`/api/v1/words/${input.wordId}`, {
+  const outcome = await fetchJson(wordPath(input.wordId), {
     method: 'PUT',
     credentials: 'same-origin',
     headers: { 'content-type': 'application/json' },
@@ -58,5 +66,5 @@ export const updateWordRequest = async (input: {
       hint: input.hint,
     }),
   })
-  return parseWordResponse(response, '保存に失敗しました。')
+  return parseWordResponse(outcome, '保存に失敗しました。')
 }

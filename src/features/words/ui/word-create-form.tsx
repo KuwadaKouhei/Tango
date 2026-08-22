@@ -26,7 +26,11 @@ export function WordCreateForm() {
       return result.word
     },
     onSuccess: async (word) => {
-      await queryClient.invalidateQueries({ queryKey: wordQueryKeys.all })
+      // 一覧はこの画面で表示していない。staleにだけして一覧へ戻ったときに取り直す。
+      await queryClient.invalidateQueries({
+        queryKey: wordQueryKeys.all,
+        refetchType: 'none',
+      })
       setSaved(word)
     },
   })

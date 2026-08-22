@@ -5,10 +5,16 @@ export type MeaningDraft = {
   value: string
 }
 
+/**
+ * keyはReactの再利用判定専用で、DOMへは出さない。
+ * 乱数をDOM idへ入れるとSSRとhydrationで属性が食い違うため、idは並び順から作る。
+ */
 export const newMeaningDraft = (): MeaningDraft => ({
   key: crypto.randomUUID(),
   value: '',
 })
+
+const meaningFieldId = (index: number): string => `meaning-${String(index + 1)}`
 
 export function WordFields({
   term,
@@ -62,12 +68,12 @@ export function WordFields({
         <legend>日本語の意味（1件以上）</legend>
         {meanings.map((meaning, index) => (
           <p key={meaning.key}>
-            <label htmlFor={`meaning-${meaning.key}`}>
+            <label htmlFor={meaningFieldId(index)}>
               意味 {String(index + 1)}
             </label>
             <br />
             <input
-              id={`meaning-${meaning.key}`}
+              id={meaningFieldId(index)}
               value={meaning.value}
               maxLength={INPUT_LIMITS.meaningMaxChars}
               onChange={(event) => {

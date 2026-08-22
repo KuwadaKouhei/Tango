@@ -43,7 +43,11 @@ export function WordEditForm({ wordId }: { wordId: string }) {
         hint: input.hint,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: wordQueryKeys.all })
+      // 離脱する画面のrefetchを待たない。staleにだけして遷移先で取り直す。
+      await queryClient.invalidateQueries({
+        queryKey: wordQueryKeys.all,
+        refetchType: 'none',
+      })
       await navigate({ to: '/words' })
     },
   })
