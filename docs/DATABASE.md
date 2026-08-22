@@ -1,6 +1,6 @@
 # DB設計: Tango MVP
 
-> 状態: **T05で一覧queryのindex利用を確認。OQ-009の削除方針は未決のままRESTRICT。**
+> 状態: **T06で一覧queryのplanを実測し、ページ確定と統計集計を分離。OQ-008/009決定済みだが、対応migrationは未適用（9.1）。**
 > 採用DB: Cloudflare D1（SQLite互換）
 > ORM/migration: Drizzle ORM / Drizzle Kit
 
@@ -153,19 +153,20 @@ indexes: `verification_identifier_idx` on (`identifier`)。
 | `user_id` | `text` | No | FK → `user.id` | 所有ユーザー |
 | `term` | `text` | No | CHECK trim後長さ > 0 | 表示用原文 |
 | `normalized_term` | `text` | No | CHECK length > 0 | NFKC等の決定済み規則による検索値 |
-| `hint` | `text` | Yes | 文字数はOQ-018 | 任意ヒント。空文字はNULLへ正規化 |
+| `hint` | `text` | Yes |  | 任意ヒント。空文字はNULLへ正規化。上限500文字はDB CHECKに持たずapplicationで守る |
 | `created_at` | `integer` | No | epoch ms | 作成日時 |
 | `updated_at` | `integer` | No | epoch ms | 更新日時 |
 
 table constraints:
 
 - `UNIQUE(id, user_id)` — `test_results(word_id, user_id)`の複合FKで所有者一致をDBでも保証する。
-- `normalized_term`はOQ-008未決のためUNIQUEにしない。初期設計は重複をDBで禁止しない。
+- `UNIQUE(user_id, normalized_term)` — OQ-008決定によりユーザー単位の重複登録を禁止する。**未適用**。`0001_minor_wasp` は制約なしで適用済みのため、新しいmigrationで追加する（9章）。
+- 重複判定の真値はこのUNIQUE制約。applicationの事前照合は分かりやすいエラーのためであり、同時実行で抜けた分はUNIQUE違反を捕まえて `409` へ変換する。
 
 indexes:
 
-- `idx_words_user_created` on `(user_id, created_at DESC, id)` — 一覧・cursor。
-- `idx_words_user_normalized_term` on `(user_id, normalized_term)` — 重複照合・将来検索。
+- `idx_words_user_created` on `(user_id, created_at, id)` — 一覧・cursor。DDLはASCで作る。SQLiteは同じindexを逆順に走査できるため、`ORDER BY created_at DESC, id DESC` でもDESC指定は不要。
+- `idx_words_user_normalized_term` on `(user_id, normalized_term)` — 重複照合・将来検索。`UNIQUE(user_id, normalized_term)` を追加したら同一列構成になるため、UNIQUE index側へ統合してこの非UNIQUE indexは削除する。
 
 ### 3.3 `word_meanings`
 
@@ -186,7 +187,7 @@ constraints/indexes:
 - `UNIQUE(word_id, sort_order)` — 同一word内の表示順重複を防ぐ。
 - `idx_word_meanings_word_order` on `(word_id, sort_order)` — 親から順序付き取得。
 - 「親に最低1件」は行単体のCHECK/FKで表現できない。application validationと、word+meaningを同一D1 batchで書くことで保証する。
-- 同じnormalized meaningの重複をDBでは禁止しない。UIでの重複候補警告はOQ-008と合わせて決める。
+- 同じnormalized meaningの重複はDBでもUIでも禁止しない。OQ-008で禁止したのは `words.normalized_term` だけで、意味は対象外。
 
 ### 3.4 `test_results`
 
@@ -208,14 +209,14 @@ constraints/indexes:
 
 constraints:
 
-- `FOREIGN KEY (word_id, user_id) REFERENCES words(id, user_id) ON DELETE RESTRICT` — result ownerとword ownerの不一致をDBでも拒否する。
+- `FOREIGN KEY (word_id, user_id) REFERENCES words(id, user_id) ON DELETE CASCADE` — result ownerとword ownerの不一致をDBでも拒否し、word削除時に履歴も消す。OQ-009の決定による。**未適用**。`0001_minor_wasp` は `ON DELETE RESTRICT` で適用済みのため、新しいmigrationで置き換える（9章）。
 - `judge_type != 'ai'`の場合、provider/model/promptをNULLにする。T03のmigrationでCHECK `test_results_ai_metadata` として二重化した。
 - AIの手動修正機能はMVP未採用のため、`ai_judgement`や`final_judgement`を作らない。採用時は監査履歴を含む別設計にする。
 
 indexes:
 
-- `idx_test_results_user_created` on `(user_id, created_at DESC, id)` — 履歴cursor。
-- `idx_test_results_user_word_created` on `(user_id, word_id, created_at DESC)` — 単語別集計・直近履歴。
+- `idx_test_results_user_created` on `(user_id, created_at, id)` — 履歴cursor。
+- `idx_test_results_user_word_created` on `(user_id, word_id, created_at)` — 単語別集計・直近履歴。
 - `idx_test_results_word_correct` on `(word_id, is_correct)` は上記で不足することをquery planで確認してから追加し、先回りしない。
 
 ## 4. リレーションとカーディナリティ
@@ -239,27 +240,36 @@ indexes:
 - `test_results.user_id`は`word_id`から導出可能だが、要件で履歴にuser IDが必要であり、owner scope queryと将来の保持方針を安全にするため保持する。
 - `normalized_term` / `normalized_meaning`は原文から導出可能だが、検索・比較の一貫性と将来の重複照合のため保存する。
 - 正規化algorithmを変更する場合はversion差を放置せず、全行再計算migrationまたはversion column追加を設計する。
+- OQ-008で `normalized_term` にUNIQUEが付くため、この再計算は**衝突しうる**。正規化を広げると、いま別行の2語が同じ正規形になりUNIQUE違反でmigrationが失敗する。OQ-004（正規化の追加範囲）を決めるときは、再計算・衝突検出・衝突行の解消手順を同じ設計に含める。
 
 ## 6. インデックス設計とquery
 
 ### 6.1 単語一覧＋統計
 
+ページ確定・意味取得・統計集計を3本に分ける。`LEFT JOIN` + `GROUP BY w.id` + `ORDER BY w.created_at DESC` を1本にまとめると、SQLiteが集計後に一時B-treeで並べ直し、`idx_words_user_created` の走査順を使えなくなるため。
+
 ```sql
-SELECT
-  w.id,
-  w.term,
-  COUNT(tr.id) AS total,
-  COALESCE(SUM(tr.is_correct), 0) AS correct
+-- 1. ページ確定（idx_words_user_created）
+SELECT w.id, w.term, w.normalized_term, w.hint, w.created_at, w.updated_at
 FROM words w
-LEFT JOIN test_results tr
-  ON tr.word_id = w.id AND tr.user_id = w.user_id
 WHERE w.user_id = ?
-GROUP BY w.id
+  AND (w.created_at, w.id) < (?, ?)   -- cursorがあるときだけ
 ORDER BY w.created_at DESC, w.id DESC
 LIMIT ?;
+
+-- 2. 意味（1で確定したID群）
+SELECT * FROM word_meanings WHERE word_id IN (...);
+
+-- 3. 統計（idx_test_results_user_word_created）
+SELECT word_id, COUNT(id) AS total, COALESCE(SUM(is_correct), 0) AS correct
+FROM test_results
+WHERE user_id = ? AND word_id IN (...)
+GROUP BY word_id;
 ```
 
-意味は対象word ID群に対する2本目のqueryで取得し、巨大なjoin resultとN+1の両方を避ける。実際のDrizzle生成SQLに`EXPLAIN QUERY PLAN`を実行する。
+- 2と3のIN句は**50件ずつに分割**する。D1のbind変数上限が1 queryあたり100個で、ページ上限100件をそのまま入れると余裕がないため。
+- 統計行が無いwordは未回答（`total = 0`）として扱う。1のページ確定はLEFT JOINを持たないので、統計の有無でページ内容が変わらない。
+- 1と3の`EXPLAIN QUERY PLAN`は、Drizzleが生成したSQLそのものに対して `tests/integration/list-words.test.ts` で検証する。手書きSQLは実装とずれるので使わない。表明は「想定indexを使う」と「`TEMP B-TREE`を作らない」の2点。
 
 ### 6.2 苦手優先
 
@@ -275,6 +285,7 @@ LIMIT ?;
 - D1 `batch()`は途中失敗でsequence全体をrollbackする。単語と意味の作成・置換更新に使う。
 - D1は1DB最大Paid 10GB / Free 500MB（2026-08-20調査値）で、single-threadedにqueryを処理する。OQ-012の件数・同時利用が決まり次第、1件あたり実測容量とp95を計測する。
 - 意味0件、入力上限、正規化、AI metadata条件はapplicationとintegration testで守り、表現可能なものだけDB CHECKでも二重化する。
+- OQ-018の文字数・件数上限はDB CHECKで二重化しない（2026-08-22決定）。Zod schemaとUIの`maxLength`だけで守り、上限を見直すときにmigrationを不要にする。長さ0の拒否は既存CHECKで維持する。
 - ID衝突、時計の逆行、batch失敗をテストする。
 
 ## 8. 削除・保持方針
@@ -284,17 +295,47 @@ LIMIT ?;
 - `word_meanings`はwordの構成要素なので、word削除時にcascadeしてよい。
 - test resultをユーザーが個別編集・削除する機能はMVP要件にない。
 
-### 8.2 未決（OQ-009）
+### 8.2 決定（OQ-009・2026-08-22）
 
-| 案 | 長所 | 短所 | schema影響 |
-|---|---|---|---|
-| cascade delete | 単純、完全削除 | 学習履歴を失う | `test_results`をON DELETE CASCADE |
-| soft delete word | 履歴・統計を保持 | 一覧scopeと保持期限が複雑 | `words.deleted_at`追加 |
-| resultへsnapshotしword参照をNULL化 | 履歴保持とhard delete | schema・表示ロジックが増える | nullable FK + term/meaning snapshot |
+**cascade delete を採用する。** 検討した3案は次のとおり。
 
-初期migrationは`RESTRICT`（`drizzle/0001_minor_wasp.sql`）。履歴ありwordのDELETE endpointはOQ-009決定前に公開しない。repositoryの`deleteOwned`は隔離証明と履歴なし削除のcascade確認にだけ使う。決定後に本節・ER図・migrationを更新する。
+| 案 | 長所 | 短所 | schema影響 | 採否 |
+|---|---|---|---|---|
+| cascade delete | 単純、完全削除 | 学習履歴を失う | `test_results`をON DELETE CASCADE | **採用** |
+| soft delete word | 履歴・統計を保持 | 一覧scopeと保持期限が複雑 | `words.deleted_at`追加 | 不採用 |
+| resultへsnapshotしword参照をNULL化 | 履歴保持とhard delete | schema・表示ロジックが増える | nullable FK + term/meaning snapshot | 不採用 |
+
+帰結:
+
+- word削除で `word_meanings` と `test_results` の両方が消える。削除は不可逆。
+- UIは削除前に確認操作を必須とし、履歴も消えることを明示する。
+- `words.deleted_at` は作らない。一覧scopeに削除済み条件を足さない。
+- 統計は履歴から導出するため、削除した単語の正解率・回答数は復元できない。
+
+初期migrationは`RESTRICT`（`drizzle/0001_minor_wasp.sql`）で適用済み。CASCADEへの変更と公開DELETE endpointはT07で実装する。それまで `deleteOwned` は隔離証明と履歴なし削除のcascade確認にだけ使う。
 
 ## 9. Migration・初期データ
+
+### 9.1 予定しているmigration（OQ-008/009の反映）
+
+`0001_minor_wasp` は適用済みなので改変せず、新しい連番migrationで次の2点を入れる。SQLiteはUNIQUE制約とFKをALTERで足せないため、`words` と `test_results` はテーブル再作成になる。Drizzle Kitの生成SQLをレビューしてから適用する。
+
+| 変更 | 対象 | 注意点 |
+|---|---|---|
+| `UNIQUE(user_id, normalized_term)` 追加 | `words` | **既存の重複行があると失敗する**。適用前に重複を検出し、解消手順を決める。非UNIQUEの `idx_words_user_normalized_term` は重複するので削除する |
+| FK を `RESTRICT` → `CASCADE` | `test_results` | 複合FK `(word_id, user_id)`。再作成中の順序制御に `PRAGMA defer_foreign_keys` を使う |
+
+適用前チェック:
+
+```sql
+-- 既存重複の検出。0件でなければUNIQUE追加は失敗する
+SELECT user_id, normalized_term, COUNT(*) AS n
+FROM words GROUP BY user_id, normalized_term HAVING n > 1;
+```
+
+local → preview → production の順に適用し、各段でintegration testを回す。productionはTime Travelの復帰ポイントを確認してから適用する。
+
+### 9.2 手順
 
 1. Better Authのlock versionで認証schemaを生成しレビューする。
 2. Drizzle schemaからSQL migrationを生成する。
@@ -303,6 +344,8 @@ LIMIT ?;
 5. production適用前にTime Travel/backup方針とrollback手順を確認する。
 
 ルール:
+
+- schema変更を伴うmigrationは、適用前チェックSQLと失敗時の戻し方を9.1の形で先に書く。
 
 - 適用済みmigrationを改変せず、新しい連番migrationを追加する。
 - productionで`drizzle push`による無審査同期を使わない。
@@ -316,6 +359,8 @@ LIMIT ?;
 | AUTH-003 | 全app tableのowner FK、words/test_resultsの複合owner FK |
 | WORD-001/002 | words + word_meanings、意味1件以上をapplication+batchで保証 |
 | WORD-003 | user/index、meanings order、test_results集計 |
+| WORD-006 | `words`の`UNIQUE(user_id, normalized_term)`。application事前照合とUNIQUE違反の409変換 |
+| WORD-007 | `test_results`の複合FK `ON DELETE CASCADE`、`word_meanings`のCASCADE |
 | HINT-001/003 | words.hint、test_results.hint_used |
 | JUDGE-002〜004 | normalized_meaning、judge_type、AI metadata |
 | JUDGE-005 | acceptable_answers tableなし、accepted値なし |
@@ -336,3 +381,5 @@ LIMIT ?;
 - 2026-08-20 T02で `auth@1.7.1` 生成の `user` / `session` / `account` / `verification` を反映
 - 2026-08-20 T03で `words` / `word_meanings` / `test_results` と `0001_minor_wasp` を追加。OQ-009は未決のままRESTRICT
 - 2026-08-21 T05で一覧SQLの `EXPLAIN QUERY PLAN` が `idx_words_user_created` を使うことをintegration testで確認。OQ-012は未決
+- 2026-08-21 T06のreviewで一覧を3 queryへ分離。index記載をDDL実体（ASC）へ訂正し、IN句の50件分割とTEMP B-TREE非発生の表明を追加
+- 2026-08-22 OQ-008/009を決定。`words`へ`UNIQUE(user_id, normalized_term)`、`test_results`のFKをCASCADEへ変更する方針を記載。migrationは未適用でT07以降に実施

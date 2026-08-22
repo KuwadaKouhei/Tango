@@ -1,7 +1,7 @@
 # 技術スタック選定: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **T02でBetter Auth / Drizzleのversionをlockfileへ追加済み（OQ-013/OQ-014）**
+> 状態: **T06で `@tanstack/react-query` 5.101.4 をlockfileへ追加済み（OQ-013/OQ-014）**
 > 要件で指定された中核スタックを尊重し、公式CLIとnpmレジストリで互換セットを確認した。以後の更新は独立PRでbuild/testを再実行する。
 
 ## 1. 選定方針
@@ -65,8 +65,9 @@
 | `drizzle-orm` | 0.45.2 | D1 / Better Auth schema |
 | `drizzle-kit` | 0.31.10 | SQL migration生成。出力先は `drizzle/` |
 | `zod` | 4.4.3 | HTTP入力のruntime検証。T03で導入 |
+| `@tanstack/react-query` | 5.101.4 | 単語一覧・詳細のserver state。T06で導入 |
 
-Playwright / TanStack Query は未導入。各タスクで追加し、この表へ exact versionを追記する。
+Playwright は未導入。各タスクで追加し、この表へ exact versionを追記する。
 
 T01で確認した公式scaffoldとの差:
 
@@ -187,3 +188,4 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 - 2026-08-20 T01でPOC-01/02合格後のlockfile固定値を反映
 - 2026-08-20 T02で Better Auth 1.7.1 / Drizzle 0.45.2 / drizzle-kit 0.31.10 を固定
 - 2026-08-20 T03で zod 4.4.3 を固定
+- 2026-08-21 T06で `@tanstack/react-query` 5.101.4 を固定

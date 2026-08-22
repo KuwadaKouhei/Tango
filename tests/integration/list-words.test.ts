@@ -5,8 +5,22 @@ import { createOpaqueId } from '../../src/platform/ids'
 import { listOwnedWords } from '../../src/features/words/application/list-owned-words'
 import { createWord } from '../../src/features/words/application/manage-word'
 import { encodeWordListCursor } from '../../src/features/words/domain/word-list-cursor'
+import { WORD_LIST_PAGE } from '../../src/features/words/domain/word-list-page'
+import { createDb } from '../../src/infrastructure/db/drizzle'
+import {
+  buildOwnedWordsPageQuery,
+  buildOwnedWordsStatsQuery,
+} from '../../src/infrastructure/db/repositories/d1-word-repository'
 import { createAppServices } from '../../src/server/composition-root'
 import { insertTestUser } from '../setup/test-builders'
+
+/** 手書きSQLだと実際のqueryとずれるため、Drizzleが出すSQLをそのまま計測する。 */
+const explain = async (query: { sql: string; params: unknown[] }) => {
+  const plan = await env.DB.prepare(`EXPLAIN QUERY PLAN ${query.sql}`)
+    .bind(...query.params)
+    .all<{ detail: string }>()
+  return plan.results.map((row) => row.detail).join('\n')
+}
 
 const createOwnedWord = async (
   userId: string,
@@ -193,24 +207,55 @@ describe('list owned words', () => {
     expect(page).toEqual({ items: [], nextCursor: null })
   })
 
-  it('一覧SQLは所有者indexを使う', async () => {
-    const plan = await env.DB.prepare(
-      `EXPLAIN QUERY PLAN
-       SELECT w.id, COUNT(tr.id) AS total, COALESCE(SUM(tr.is_correct), 0) AS correct
-       FROM words w
-       LEFT JOIN test_results tr
-         ON tr.word_id = w.id AND tr.user_id = w.user_id
-       WHERE w.user_id = ?
-         AND (w.created_at, w.id) < (?, ?)
-       GROUP BY w.id
-       ORDER BY w.created_at DESC, w.id DESC
-       LIMIT ?`,
+  it('ページ確定SQLは所有者indexで並び、一時B-treeを作らない', async () => {
+    const details = await explain(
+      buildOwnedWordsPageQuery(createDb(env), {
+        ownerUserId: 'list-plan',
+        cursor: { createdAt: 1, id: 'w_cursor' },
+        limit: 20,
+      }).toSQL(),
     )
-      .bind('list-plan', 1, 'w_cursor', 20)
-      .all<{ detail: string }>()
 
-    const details = plan.results.map((row) => row.detail).join('\n')
     expect(details).toMatch(/idx_words_user_created/u)
+    expect(details).not.toMatch(/TEMP B-TREE/iu)
+  })
+
+  it('統計集計SQLは単語別indexを使い、一時B-treeを作らない', async () => {
+    const details = await explain(
+      buildOwnedWordsStatsQuery(createDb(env), 'list-plan', [
+        'w_1',
+        'w_2',
+      ]).toSQL(),
+    )
+
+    expect(details).toMatch(/idx_test_results_user_word_created/u)
+    expect(details).not.toMatch(/TEMP B-TREE/iu)
+  })
+
+  it('最大ページでも分割取得した意味と統計が全件に付く', async () => {
+    await insertTestUser(env.DB, 'list-chunk')
+    const services = createAppServices(env)
+    for (let index = 0; index < WORD_LIST_PAGE.maxLimit; index += 1) {
+      await createOwnedWord(
+        'list-chunk',
+        `term-${String(index)}`,
+        [`意味-${String(index)}`],
+        1_000 + index,
+      )
+    }
+
+    const page = await listOwnedWords({
+      actorUserId: 'list-chunk',
+      cursor: null,
+      limit: WORD_LIST_PAGE.maxLimit,
+      wordRepository: services.wordRepository,
+    })
+
+    expect(page.items).toHaveLength(WORD_LIST_PAGE.maxLimit)
+    expect(page.items.every((item) => item.meanings.length === 1)).toBe(true)
+    expect(page.items.every((item) => item.stats.status === 'unanswered')).toBe(
+      true,
+    )
   })
 
   it('存在しないcursor位置でも所有者外の単語は混ざらない', async () => {

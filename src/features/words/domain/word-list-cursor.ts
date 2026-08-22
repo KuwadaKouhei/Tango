@@ -19,7 +19,6 @@ const isCursor = (value: unknown): value is WordListCursor => {
   return (
     typeof record.createdAt === 'number' &&
     Number.isInteger(record.createdAt) &&
-    Number.isFinite(record.createdAt) &&
     typeof record.id === 'string' &&
     record.id.length > 0
   )

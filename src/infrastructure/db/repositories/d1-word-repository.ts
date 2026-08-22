@@ -1,6 +1,9 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import { encodeWordListCursor } from '../../../features/words/domain/word-list-cursor'
-import type { WordRepository } from '../../../features/words/domain/word-repository'
+import type {
+  ListWordsQuery,
+  WordRepository,
+} from '../../../features/words/domain/word-repository'
 import { toWordStats } from '../../../features/words/domain/word-stats'
 import type {
   NewWord,
@@ -37,6 +40,66 @@ const toWord = (
     })),
 })
 
+/**
+ * D1は1 queryあたりのbind変数が100個まで。
+ * ページ最大100件のIDをそのままINへ入れると上限ぴったりで余裕がないため分割する。
+ */
+const PAGE_LOOKUP_CHUNK_SIZE = 50
+
+const chunk = <T>(items: T[], size: number): T[][] => {
+  const chunks: T[][] = []
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
+  }
+  return chunks
+}
+
+/**
+ * ページ確定と統計集計を別queryにする。
+ * GROUP BYとORDER BYを同じqueryへ混ぜるとSQLiteが一時B-treeで並べ直し、
+ * idx_words_user_created の走査順をそのまま使えなくなるため。
+ */
+export const buildOwnedWordsPageQuery = (db: AppDb, input: ListWordsQuery) => {
+  const cursorFilter = input.cursor
+    ? sql`(${words.createdAt}, ${words.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`
+    : undefined
+
+  return db
+    .select({
+      id: words.id,
+      userId: words.userId,
+      term: words.term,
+      normalizedTerm: words.normalizedTerm,
+      hint: words.hint,
+      createdAt: words.createdAt,
+      updatedAt: words.updatedAt,
+    })
+    .from(words)
+    .where(and(eq(words.userId, input.ownerUserId), cursorFilter))
+    .orderBy(desc(words.createdAt), desc(words.id))
+    .limit(input.limit + 1)
+}
+
+export const buildOwnedWordsStatsQuery = (
+  db: AppDb,
+  ownerUserId: string,
+  wordIds: string[],
+) =>
+  db
+    .select({
+      wordId: testResults.wordId,
+      total: sql<number>`count(${testResults.id})`,
+      correct: sql<number>`coalesce(sum(${testResults.isCorrect}), 0)`,
+    })
+    .from(testResults)
+    .where(
+      and(
+        eq(testResults.userId, ownerUserId),
+        inArray(testResults.wordId, wordIds),
+      ),
+    )
+    .groupBy(testResults.wordId)
+
 const meaningInserts = (db: AppDb, input: NewWord) =>
   input.meanings.map((meaning) =>
     db.insert(wordMeanings).values({
@@ -72,57 +135,51 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
     findOwnedById,
 
     listByOwner: async (input) => {
-      const cursorFilter = input.cursor
-        ? sql`(${words.createdAt}, ${words.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`
-        : undefined
-
-      const rows = await db
-        .select({
-          id: words.id,
-          userId: words.userId,
-          term: words.term,
-          normalizedTerm: words.normalizedTerm,
-          hint: words.hint,
-          createdAt: words.createdAt,
-          updatedAt: words.updatedAt,
-          total: sql<number>`count(${testResults.id})`,
-          correct: sql<number>`coalesce(sum(${testResults.isCorrect}), 0)`,
-        })
-        .from(words)
-        .leftJoin(
-          testResults,
-          and(
-            eq(testResults.wordId, words.id),
-            eq(testResults.userId, words.userId),
-          ),
-        )
-        .where(and(eq(words.userId, input.ownerUserId), cursorFilter))
-        .groupBy(words.id)
-        .orderBy(desc(words.createdAt), desc(words.id))
-        .limit(input.limit + 1)
-
+      const rows = await buildOwnedWordsPageQuery(db, input)
       const hasNext = rows.length > input.limit
       const pageRows = hasNext ? rows.slice(0, input.limit) : rows
       const wordIds = pageRows.map((row) => row.id)
-      const meaningRows =
-        wordIds.length === 0
-          ? []
-          : await db
-              .select()
-              .from(wordMeanings)
-              .where(inArray(wordMeanings.wordId, wordIds))
 
-      const meaningsByWordId = new Map<string, typeof meaningRows>()
-      for (const meaning of meaningRows) {
-        const current = meaningsByWordId.get(meaning.wordId) ?? []
-        current.push(meaning)
-        meaningsByWordId.set(meaning.wordId, current)
+      const meaningsByWordId = new Map<
+        string,
+        (typeof wordMeanings.$inferSelect)[]
+      >()
+      const statsByWordId = new Map<
+        string,
+        { correct: number; total: number }
+      >()
+
+      for (const idChunk of chunk(wordIds, PAGE_LOOKUP_CHUNK_SIZE)) {
+        const meaningRows = await db
+          .select()
+          .from(wordMeanings)
+          .where(inArray(wordMeanings.wordId, idChunk))
+        for (const meaning of meaningRows) {
+          const current = meaningsByWordId.get(meaning.wordId) ?? []
+          current.push(meaning)
+          meaningsByWordId.set(meaning.wordId, current)
+        }
+
+        const statsRows = await buildOwnedWordsStatsQuery(
+          db,
+          input.ownerUserId,
+          idChunk,
+        )
+        for (const stats of statsRows) {
+          statsByWordId.set(stats.wordId, {
+            correct: Number(stats.correct),
+            total: Number(stats.total),
+          })
+        }
       }
 
-      const items: WordWithStats[] = pageRows.map((row) => ({
-        ...toWord(row, meaningsByWordId.get(row.id) ?? []),
-        stats: toWordStats(Number(row.correct), Number(row.total)),
-      }))
+      const items: WordWithStats[] = pageRows.map((row) => {
+        const stats = statsByWordId.get(row.id)
+        return {
+          ...toWord(row, meaningsByWordId.get(row.id) ?? []),
+          stats: toWordStats(stats?.correct ?? 0, stats?.total ?? 0),
+        }
+      })
 
       const last = items[items.length - 1]
       return {
