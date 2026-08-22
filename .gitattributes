@@ -1,0 +1,19 @@
+# 改行コードはリポジトリ内・作業ツリーともLFへ統一する。
+# core.autocrlf=true のWindows環境ではチェックアウト時にCRLFへ変換されるが、
+# Prettierの既定は endOfLine: "lf" のため、format実行のたびに全ファイルが
+# 差分ゼロのまま変更扱いになり、ブランチ切り替えが阻害されていた。
+* text=auto eol=lf
+
+# 判定を誤ると壊れるものは明示的にbinary扱いにする。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.zip binary
+*.sqlite binary
+*.db binary
