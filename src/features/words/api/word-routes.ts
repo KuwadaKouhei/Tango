@@ -74,10 +74,8 @@ export const createWordRoutes = () => {
   const routes = new Hono<WordRouteEnv>()
 
   routes.get('/words', async (c) => {
-    const parsed = listWordsQuerySchema.safeParse({
-      ...(c.req.query('cursor') ? { cursor: c.req.query('cursor') } : {}),
-      ...(c.req.query('limit') ? { limit: c.req.query('limit') } : {}),
-    })
+    // 先に既知paramだけ抜き出すとschemaのstrictが効かず、綴り違いを黙って無視してしまう。
+    const parsed = listWordsQuerySchema.safeParse(c.req.query())
     if (!parsed.success) {
       throw AppError.validation('入力が正しくありません。', {
         fields: parsed.error.issues.map((issue) => issue.path.join('.')),

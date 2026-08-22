@@ -1,4 +1,5 @@
 import { apiErrorSchema, wordResponseSchema } from '../api/word-schemas'
+import { fetchJson } from './fetch-json'
 import type { WordResponse } from '../api/word-schemas'
 
 export type CreateWordClientResult =
@@ -9,16 +10,19 @@ export const createWordRequest = async (input: {
   meanings: string[]
   hint: string | null
 }): Promise<CreateWordClientResult> => {
-  const response = await fetch('/api/v1/words', {
+  const outcome = await fetchJson('/api/v1/words', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
   })
 
-  const body: unknown = await response.json()
-  if (!response.ok) {
-    const parsed = apiErrorSchema.safeParse(body)
+  if (!outcome.received) {
+    return { ok: false, message: outcome.message }
+  }
+
+  if (!outcome.ok) {
+    const parsed = apiErrorSchema.safeParse(outcome.body)
     return {
       ok: false,
       message: parsed.success
@@ -27,7 +31,7 @@ export const createWordRequest = async (input: {
     }
   }
 
-  const parsed = wordResponseSchema.safeParse(body)
+  const parsed = wordResponseSchema.safeParse(outcome.body)
   if (!parsed.success) {
     return { ok: false, message: '登録結果の形式が正しくありません。' }
   }
