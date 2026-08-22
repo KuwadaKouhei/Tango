@@ -172,6 +172,7 @@ Tango/
 │   │   ├── list-words-api.test.ts     # HTTP契約。query parse・422・応答JSON
 │   │   ├── update-word.test.ts
 │   │   ├── word-detail-api.test.ts    # HTTP契約。GET/PUT・404・Origin・422
+│   │   ├── word-duplicate-api.test.ts # HTTP契約。409・正規化同一視・UNIQUE違反変換
 │   │   ├── study-api.test.ts
 │   │   └── translation-api.test.ts
 │   ├── contract/
@@ -318,3 +319,4 @@ composition-root -> application + infrastructure
 - 2026-08-21 T05で `/words` 一覧、統計、`$wordId.edit` 導線を反映
 - 2026-08-21 T06で編集フォーム、word-fields、TanStack Queryを反映
 - 2026-08-21 T06のreviewで fetch-json、HTTP契約testとsigned-in-api harnessを反映
+- 2026-08-22 T16で word-duplicate-api.test.ts を追加

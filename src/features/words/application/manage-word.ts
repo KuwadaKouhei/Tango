@@ -16,6 +16,27 @@ export type CreateWordInput = {
   hint: string | null
 }
 
+/**
+ * OQ-008の事前照合。分かりやすいerrorを返すためのもので、真値はDBのUNIQUE制約。
+ * ここを通過しても同時実行で衝突しうるので、repository側でも同じ409へ変換する。
+ * keepWordIdは更新時に自分自身を重複扱いしないための除外指定。
+ */
+const requireNoDuplicateTerm = async (input: {
+  actorUserId: string
+  normalizedTerm: string
+  keepWordId?: string
+  wordRepository: WordRepository
+}): Promise<void> => {
+  const duplicatedId = await input.wordRepository.findOwnedIdByNormalizedTerm(
+    input.actorUserId,
+    input.normalizedTerm,
+  )
+
+  if (duplicatedId && duplicatedId !== input.keepWordId) {
+    throw AppError.wordDuplicate(duplicatedId)
+  }
+}
+
 export const createWord = async (input: {
   command: CreateWordInput
   wordRepository: WordRepository
@@ -23,6 +44,11 @@ export const createWord = async (input: {
 }): Promise<Word> => {
   const preparedTerm = requirePreparedTerm(input.command.term)
   const preparedMeanings = requirePreparedMeanings(input.command.meanings)
+  await requireNoDuplicateTerm({
+    actorUserId: input.command.actorUserId,
+    normalizedTerm: preparedTerm.normalizedTerm,
+    wordRepository: input.wordRepository,
+  })
   const now = input.clock.nowEpochMs()
   const wordId = createOpaqueId('w')
 
@@ -74,6 +100,12 @@ export const updateWord = async (input: {
 
   const preparedTerm = requirePreparedTerm(input.command.term)
   const preparedMeanings = requirePreparedMeanings(input.command.meanings)
+  await requireNoDuplicateTerm({
+    actorUserId: input.command.actorUserId,
+    normalizedTerm: preparedTerm.normalizedTerm,
+    keepWordId: existing.id,
+    wordRepository: input.wordRepository,
+  })
   const now = input.clock.nowEpochMs()
 
   return input.wordRepository.update({

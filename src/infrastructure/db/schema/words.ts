@@ -25,7 +25,9 @@ export const words = sqliteTable(
   (table) => [
     unique('words_id_user_id_unique').on(table.id, table.userId),
     index('idx_words_user_created').on(table.userId, table.createdAt, table.id),
-    index('idx_words_user_normalized_term').on(
+    // OQ-008: 重複判定の真値。非UNIQUEの idx_words_user_normalized_term は
+    // 同じ列構成なので、このUNIQUE indexへ統合して削除した。
+    unique('words_user_id_normalized_term_unique').on(
       table.userId,
       table.normalizedTerm,
     ),

@@ -11,6 +11,7 @@ import type {
   WordId,
   WordWithStats,
 } from '../../../features/words/domain/word'
+import { AppError } from '../../../platform/app-error'
 import type { AppDb } from '../drizzle'
 import { testResults } from '../schema/test-results'
 import { wordMeanings } from '../schema/word-meanings'
@@ -100,6 +101,14 @@ export const buildOwnedWordsStatsQuery = (
     )
     .groupBy(testResults.wordId)
 
+const isNormalizedTermConflict = (cause: unknown): boolean => {
+  const message = cause instanceof Error ? cause.message : String(cause)
+  return (
+    message.includes('UNIQUE constraint failed') &&
+    message.includes('words.normalized_term')
+  )
+}
+
 const meaningInserts = (db: AppDb, input: NewWord) =>
   input.meanings.map((meaning) =>
     db.insert(wordMeanings).values({
@@ -117,6 +126,50 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
   const loadMeanings = async (wordId: WordId) =>
     db.select().from(wordMeanings).where(eq(wordMeanings.wordId, wordId))
 
+  const findOwnedIdByNormalizedTerm = async (
+    ownerUserId: string,
+    normalizedTerm: string,
+  ) => {
+    const [row] = await db
+      .select({ id: words.id })
+      .from(words)
+      .where(
+        and(
+          eq(words.userId, ownerUserId),
+          eq(words.normalizedTerm, normalizedTerm),
+        ),
+      )
+      .limit(1)
+
+    return row?.id ?? null
+  }
+
+  /**
+   * applicationの事前照合と保存の間に別requestが割り込むと、UNIQUE違反として返る。
+   * SQLiteのmessageは列名しか出さないため、ここで所有者scopeの重複だけを409へ揃える。
+   * 衝突相手のIDは所有者scopeで引き直す。判別できない制約違反は原因を保って投げ直し、
+   * API境界で500にする。
+   */
+  const rethrowAsDuplicate = async (
+    cause: unknown,
+    ownerUserId: string,
+    normalizedTerm: string,
+  ): Promise<never> => {
+    if (!isNormalizedTermConflict(cause)) {
+      throw cause
+    }
+
+    const existingWordId = await findOwnedIdByNormalizedTerm(
+      ownerUserId,
+      normalizedTerm,
+    )
+    if (!existingWordId) {
+      throw cause
+    }
+
+    throw AppError.wordDuplicate(existingWordId)
+  }
+
   const findOwnedById = async (ownerUserId: string, wordId: WordId) => {
     const [row] = await db
       .select()
@@ -133,6 +186,8 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
 
   return {
     findOwnedById,
+
+    findOwnedIdByNormalizedTerm,
 
     listByOwner: async (input) => {
       const rows = await buildOwnedWordsPageQuery(db, input)
@@ -197,19 +252,23 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
         throw new Error('create requires at least one meaning')
       }
 
-      await db.batch([
-        db.insert(words).values({
-          id: input.id,
-          userId: input.userId,
-          term: input.term,
-          normalizedTerm: input.normalizedTerm,
-          hint: input.hint,
-          createdAt: input.createdAt,
-          updatedAt: input.updatedAt,
-        }),
-        firstMeaning,
-        ...meaningInserts(db, input).slice(1),
-      ])
+      try {
+        await db.batch([
+          db.insert(words).values({
+            id: input.id,
+            userId: input.userId,
+            term: input.term,
+            normalizedTerm: input.normalizedTerm,
+            hint: input.hint,
+            createdAt: input.createdAt,
+            updatedAt: input.updatedAt,
+          }),
+          firstMeaning,
+          ...meaningInserts(db, input).slice(1),
+        ])
+      } catch (cause) {
+        await rethrowAsDuplicate(cause, input.userId, input.normalizedTerm)
+      }
 
       const created = await findOwnedById(input.userId, input.id)
       if (!created) {
@@ -230,20 +289,24 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
         throw new Error('update requires at least one meaning')
       }
 
-      await db.batch([
-        db.delete(wordMeanings).where(eq(wordMeanings.wordId, input.id)),
-        db
-          .update(words)
-          .set({
-            term: input.term,
-            normalizedTerm: input.normalizedTerm,
-            hint: input.hint,
-            updatedAt: input.updatedAt,
-          })
-          .where(and(eq(words.id, input.id), eq(words.userId, input.userId))),
-        firstMeaning,
-        ...meaningInserts(db, input).slice(1),
-      ])
+      try {
+        await db.batch([
+          db.delete(wordMeanings).where(eq(wordMeanings.wordId, input.id)),
+          db
+            .update(words)
+            .set({
+              term: input.term,
+              normalizedTerm: input.normalizedTerm,
+              hint: input.hint,
+              updatedAt: input.updatedAt,
+            })
+            .where(and(eq(words.id, input.id), eq(words.userId, input.userId))),
+          firstMeaning,
+          ...meaningInserts(db, input).slice(1),
+        ])
+      } catch (cause) {
+        await rethrowAsDuplicate(cause, input.userId, input.normalizedTerm)
+      }
 
       const updated = await findOwnedById(input.userId, input.id)
       if (!updated) {
