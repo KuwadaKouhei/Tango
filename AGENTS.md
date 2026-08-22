@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T16（単語の重複登録禁止）作業中。ブランチは `feature/T16-word-duplicate`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T16（単語の重複登録禁止）PR中。ブランチは `feature/T16-word-duplicate`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -122,7 +122,7 @@
 
 - OQ-013/014/016/017: 承認済み。
 - OQ-008/009/018: 2026-08-22に決定済み。決定内容は `docs/OPEN_QUESTIONS.md` 3節。
-- T01〜T06: マージ済み。T16は作業中。
+- T01〜T06: マージ済み。T16はPR中。
 - OQ-008は `0002_boring_kabuki` で適用済み。重複登録は409で拒否する。
 - OQ-009のmigrationは未適用。履歴ありwordは消せないままで、実装はT07。
 - 各タスク前: TASKSの意思決定列にあるOQ。
