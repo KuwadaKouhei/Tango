@@ -71,6 +71,7 @@ Tango/
 │   │   │   │   ├── word-routes.ts
 │   │   │   │   └── word-schemas.ts
 │   │   │   ├── ui/
+│   │   │   │   ├── fetch-json.ts
 │   │   │   │   ├── create-word-request.ts
 │   │   │   │   ├── word-create-form.tsx
 │   │   │   │   ├── word-fields.tsx
@@ -168,8 +169,9 @@ Tango/
 │   │   ├── schema-constraints.test.ts
 │   │   ├── create-word.test.ts
 │   │   ├── list-words.test.ts
+│   │   ├── list-words-api.test.ts     # HTTP契約。query parse・422・応答JSON
 │   │   ├── update-word.test.ts
-│   │   ├── word-api.test.ts
+│   │   ├── word-detail-api.test.ts    # HTTP契約。GET/PUT・404・Origin・422
 │   │   ├── study-api.test.ts
 │   │   └── translation-api.test.ts
 │   ├── contract/
@@ -183,6 +185,7 @@ Tango/
 │   │   └── dispatch-worker.ts         # Start仮想moduleを避けたWorkers test entry
 │   ├── setup/
 │   │   ├── apply-migrations.ts
+│   │   ├── signed-in-api.ts           # requireAuthだけ差し替えた本番Hono app
 │   │   └── test-builders.ts
 │   ├── cloudflare-test.d.ts
 │   └── tsconfig.json
@@ -314,3 +317,4 @@ composition-root -> application + infrastructure
 - 2026-08-20 T04で `/words/new` と word-create-form を反映
 - 2026-08-21 T05で `/words` 一覧、統計、`$wordId.edit` 導線を反映
 - 2026-08-21 T06で編集フォーム、word-fields、TanStack Queryを反映
+- 2026-08-21 T06のreviewで fetch-json、HTTP契約testとsigned-in-api harnessを反映

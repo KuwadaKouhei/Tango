@@ -166,7 +166,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 | 401 | `UNAUTHENTICATED` | 有効なsessionがない |
 | 403 | `ORIGIN_NOT_ALLOWED` | mutationのOrigin不正 |
 | 404 | `WORD_NOT_FOUND` | 未存在または非所有 |
-| 409 | `CONFLICT` | 決定後の重複規則や更新競合 |
+| 409 | `WORD_DUPLICATE` | 同一ユーザー内で正規形が一致する単語が既にある |
 | 422 | `VALIDATION_FAILED` | schema/domain invariant違反 |
 | 429 | `RATE_LIMITED` | AI/翻訳等の利用制限 |
 | 502 | `PROVIDER_INVALID_RESPONSE` | 外部provider応答が契約外 |
@@ -185,7 +185,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 | POST | `/api/v1/words` | 必須 | 単語と1件以上の意味を原子的に作成 |
 | GET | `/api/v1/words/:wordId` | 必須 | 所有単語の詳細 |
 | PUT | `/api/v1/words/:wordId` | 必須 | 単語・意味・ヒントを原子的に置換更新 |
-| DELETE | `/api/v1/words/:wordId` | 必須 | 削除。履歴方針OQ-009決定後に実装。T03では公開しない |
+| DELETE | `/api/v1/words/:wordId` | 必須 | 単語と意味と回答履歴をカスケード削除（OQ-009）。T07で公開する |
 | POST | `/api/v1/translation-candidates` | 必須 | DB保存せず日本語候補を返す |
 | POST | `/api/v1/study/questions` | 必須 | modeに従い次の問題を1件返す |
 | GET | `/api/v1/study/questions/:wordId/hint` | 必須 | 所有確認後にヒントを返す |
@@ -223,7 +223,37 @@ POST /api/v1/words
 }
 ```
 
-入力上限はOQ-018未決のため、初期guardrail候補（term 100、meaning 200、意味20件、hint 500）を防御値としてだけ適用する。`meanings`は空配列を拒否し、空白だけのmeaningも拒否する。request bodyに`userId`は無い。
+入力上限はOQ-018で確定した term 100、meaning 200、意味20件、hint 500 を適用する。`meanings`は空配列を拒否し、空白だけのmeaningも拒否する。request bodyに`userId`は無い。
+
+#### 単語の重複拒否（OQ-008）
+
+POST と PUT は、`normalizeTerm` の正規形が同一ユーザーの既存単語と一致したら `409 WORD_DUPLICATE` を返す。
+
+```json
+409 Conflict
+{
+  "error": {
+    "code": "WORD_DUPLICATE",
+    "message": "この単語はすでに登録されています。",
+    "requestId": "req_...",
+    "details": { "existingWordId": "w_..." }
+  }
+}
+```
+
+- 真値はDBの `UNIQUE(user_id, normalized_term)`。applicationは保存前に所有者scopeで照合して分かりやすく落とすが、そこを通過してもUNIQUE違反を捕まえて同じ409へ変換する。事前照合だけだと同時実行で抜ける。
+- PUTは自分自身を除外して判定する。termを変えない保存を409にしない。
+- 判定対象は `words.normalized_term` だけ。意味の重複は拒否しない。
+- `existingWordId` は所有者scopeで引いた自分の単語IDに限る。他ユーザーの単語IDを返さない。
+- OQ-010の「重複警告」はMVP外のまま。既存単語の編集画面へ誘導するUIは作らない。
+
+#### 単語削除
+
+```http
+DELETE /api/v1/words/:wordId
+```
+
+`204 No Content`。非所有・未存在は `404 WORD_NOT_FOUND` で区別しない。DBのFK `ON DELETE CASCADE` により意味と回答履歴も消える。application側で履歴を明示削除せず、削除の原子性はDBに任せる。UIは実行前に確認操作を挟み、履歴も消えることを伝える。
 
 #### 単語一覧
 
@@ -253,6 +283,10 @@ GET /api/v1/words?limit=20&cursor=opaque
 ```
 
 `limit`未指定は20。上限100はOQ-012未決のため防御値。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
+
+query paramは既知keyだけ抜き出さず、`c.req.query()` 全体をstrict schemaへ渡す。`?limmit=20` のような綴り違いを黙って既定値で処理せず、`422 VALIDATION_FAILED` で返すため。
+
+一覧はページ確定・意味・統計の3 queryに分ける（`docs/DATABASE.md` 6.1）。1本のjoin + `GROUP BY` + `ORDER BY` はSQLiteが一時B-treeで並べ直し、cursor indexが効かなくなる。
 
 #### 翻訳候補
 
@@ -466,8 +500,12 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 T06時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
-- 公開DELETEはOQ-009決定まで作らない。履歴ありwordはDB `RESTRICT`。一覧の削除導線はdisabled。
+- 公開DELETEはT07で作る。OQ-009決定済みだがmigration未適用のため、当面は履歴ありwordがDB `RESTRICT` で消せず、一覧の削除導線もdisabledのまま。
+- 重複拒否（OQ-008）もmigration未適用。現時点のAPIは同じ単語の重複登録を通す。
 - 単語のサーバー状態はTanStack Query。相対URLのfetchはclientだけで行い、SSRではqueryをenabledにしない。
+- clientのAPI呼び出しは `features/words/ui/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。
+- 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
+- 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
 - カード色の補間はOQ-007/T14。一覧は未回答と正解率を文字で示す。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
@@ -488,3 +526,5 @@ T06時点の意図的な限定:
 - 2026-08-20 T04で単語登録画面と複数意味・ヒント保存を反映。OQ-018は未決のままguardrail候補を適用
 - 2026-08-21 T05で所有単語のcursor一覧と未回答/正解率を反映。OQ-012は未決のままページサイズ候補を防御値として適用
 - 2026-08-21 T06で単語編集画面とTanStack Query cache無効化を反映。OQ-008/018は未決のまま
+- 2026-08-21 T06のreviewで fetch-json、query paramのstrict検証、一覧3 query分離、SSR安全なDOM idを反映
+- 2026-08-22 OQ-008/009/018の決定を反映。`WORD_DUPLICATE` の409契約とDELETEのカスケード契約を追加。実装はT07以降

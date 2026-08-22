@@ -83,7 +83,7 @@
 - word + meaningsの複数SQLはD1 batchで原子的に扱う。
 - 意味0件を保存しない。
 - `test_results(word_id,user_id)` と `words(id,user_id)` の所有者一致を守る。
-- OQ-009決定前に履歴ありwordの削除仕様を実装しない。
+- OQ-009はカスケード削除で決定済み。migration適用まで公開DELETEを出さない。
 - 適用済みmigrationを改変しない。productionで無審査のschema pushをしない。
 - schema変更時は `docs/DATABASE.md` とmigration/rollback/testを同時更新する。
 
@@ -120,7 +120,8 @@
 
 ## 現在の必須レビュー項目
 
-- OQ-016/017: 承認済み。
-- T01〜T03: マージ済み。
-- T04: 登録画面と複数意味・hint。OQ-008/018は未決。上限は初期guardrail候補のみ。
+- OQ-013/014/016/017: 承認済み。
+- OQ-008/009/018: 2026-08-22に決定済み。決定内容は `docs/OPEN_QUESTIONS.md` 3節。
+- T01〜T05: マージ済み。T06はPR中。
+- OQ-008/009のmigrationは未適用。重複登録は今のAPIで通り、履歴ありwordは消せない。実装はT16とT07。
 - 各タスク前: TASKSの意思決定列にあるOQ。
