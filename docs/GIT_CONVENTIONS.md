@@ -16,6 +16,7 @@
 - 起点: 最新の`main`。
 - 命名: `feature/<task-id>-<kebab-slug>`、例 `feature/T05-word-create`。
 - 修正: `fix/<task-id>-<kebab-slug>`、文書のみ: `docs/<slug>`。
+- タスクに紐付かない開発基盤の整備: `chore/<slug>`、例 `chore/gitattributes-eol`。`docs/TASKS.md` へは載せず、振る舞いを変えないものに限る。
 - `main`への直接commit: 原則禁止。2026-08-20の初回baselineは、公開repository作成・pushの明示依頼に基づく例外とする。
 - PR本文: タスクID、対応AC/REQ、変更概要、テスト結果、レビュー結果、未確認事項、影響ドキュメントを含める。
 - CI: format、lint、typecheck、test、buildが全て成功するまでmergeしない。
@@ -63,7 +64,14 @@ update files
 - UI変更には主要状態（loading、empty、error、success）と必要な画面確認を含める。
 - AI/翻訳変更にはprovider、model、prompt version、評価結果を含める。
 
-## 6. 禁止事項
+## 6. 改行コード
+
+- リポジトリ内・作業ツリーともLFへ統一し、`.gitattributes` の `* text=auto eol=lf` で強制する。
+- Prettierの既定 `endOfLine: "lf"` に揃えるためであり、`core.autocrlf` の値に関わらず全環境で同じ結果になる。
+- `.gitattributes` を消すと、Windowsの `core.autocrlf=true` 環境で `pnpm format` のたびに全ファイルが差分ゼロのまま変更扱いになり、branch切り替えが阻害される。
+- 画像・font・アーカイブ等は `binary` を明示し、誤変換を防ぐ。
+
+## 7. 禁止事項
 
 - シークレット、APIキー、OAuth secret、Cloudflare token、Cookie、`.env`、`.dev.vars`をcommitしない。
 - `node_modules`、build成果物、ローカルD1データ、テスト動画等の生成物を無差別にcommitしない。
@@ -71,13 +79,14 @@ update files
 - 他人またはユーザーの変更を無断でreset、checkout、上書きしない。
 - AIはPRをmergeしない。
 
-## 7. タグ・リリース
+## 8. タグ・リリース
 
 - MVP公開までは未定。
 - 公開後はSemVerを候補とし、release noteへschema migrationと既知制限を記載する。
 
-## 8. 更新履歴
+## 9. 更新履歴
 
 - 2026-08-20 初版作成
 - 2026-08-20 公開GitHub repositoryと初回baseline方針を反映
 - 2026-08-20 OQ-017の運用細部を承認済みへ更新
+- 2026-08-22 改行コード方針（`.gitattributes` でLF統一）と `chore/<slug>` branchを追加。以降の節番号を繰り下げ
