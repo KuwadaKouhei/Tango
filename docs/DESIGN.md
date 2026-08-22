@@ -399,7 +399,9 @@ Request
   -> 作成結果を再取得
 ```
 
-重複規則はOQ-008、入力上限はOQ-018、削除挙動はOQ-009の決定後に固定する。
+重複規則（OQ-008）と入力上限（OQ-018）は確定済み。削除挙動（OQ-009）はT07で実装する。
+
+保存の直前に所有者scopeで正規形を照合し、衝突したら保存へ進まず409にする。事前照合を通過してもD1のUNIQUE違反を捕まえて同じ409へ変換するため、同時実行でも2件目は保存されない。
 
 ### 6.3 回答判定
 
@@ -497,11 +499,11 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 ## 9. 設計思想からの逸脱
 
-T06時点の意図的な限定:
+T16時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
 - 公開DELETEはT07で作る。OQ-009決定済みだがmigration未適用のため、当面は履歴ありwordがDB `RESTRICT` で消せず、一覧の削除導線もdisabledのまま。
-- 重複拒否（OQ-008）もmigration未適用。現時点のAPIは同じ単語の重複登録を通す。
+- 重複拒否（OQ-008）はT16で適用済み。`existingWordId` は応答に含めるが、既存単語の編集画面へ誘導するUIは作らない（OQ-010はMVP外のまま）。
 - 単語のサーバー状態はTanStack Query。相対URLのfetchはclientだけで行い、SSRではqueryをenabledにしない。
 - clientのAPI呼び出しは `features/words/ui/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。
 - 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
@@ -528,3 +530,4 @@ T06時点の意図的な限定:
 - 2026-08-21 T06で単語編集画面とTanStack Query cache無効化を反映。OQ-008/018は未決のまま
 - 2026-08-21 T06のreviewで fetch-json、query paramのstrict検証、一覧3 query分離、SSR安全なDOM idを反映
 - 2026-08-22 OQ-008/009/018の決定を反映。`WORD_DUPLICATE` の409契約とDELETEのカスケード契約を追加。実装はT07以降
+- 2026-08-22 T16で重複拒否を実装。事前照合とUNIQUE違反の両方を409へ揃え、`existingWordId` は所有者scopeに限ることをtestで固定。逸脱節をT16時点へ更新

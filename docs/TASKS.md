@@ -23,8 +23,8 @@
 | T03 | D1 schema・migration・所有者分離基盤 | AC-003,009 | T01,T02 | OQ-009初期方針確認 | `feature/T03-d1-ownership` | ✅マージ済み |
 | T04 | 複数意味・ヒント付き単語登録 | AC-002,006 | T03 | OQ-008,018 | `feature/T04-word-create` | ✅マージ済み |
 | T05 | 単語一覧と未回答統計 | AC-003,010 | T04 | OQ-012 | `feature/T05-word-list` | ✅マージ済み |
-| T06 | 単語・意味・ヒント編集 | AC-002,003 | T04,T05 | OQ-008,018 | `feature/T06-word-edit` | 🟡PR中 |
-| T16 | 単語の重複登録禁止 | AC-012 | T04,T06 | OQ-008（決定済み） | `feature/T16-word-duplicate` | ⬜未着手 |
+| T06 | 単語・意味・ヒント編集 | AC-002,003 | T04,T05 | OQ-008,018 | `feature/T06-word-edit` | ✅マージ済み |
+| T16 | 単語の重複登録禁止 | AC-012 | T04,T06 | OQ-008（決定済み） | `feature/T16-word-duplicate` | 🟡PR中 |
 | T07 | 単語削除 | AC-003,013 | T06 | OQ-009（決定済み） | `feature/T07-word-delete` | ⬜未着手 |
 | T08 | 翻訳候補による登録補助 | AC-004 | T04 | **OQ-001,015必須** | `feature/T08-translation` | ⬜未着手 |
 | T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | **OQ-005必須** | `feature/T09-random-study` | ⬜未着手 |
@@ -300,3 +300,5 @@ T16の重複禁止はOQ-010の「重複警告」とは別物である。T16は�
 - 2026-08-21 T05をマージ済み、T06をPR中へ更新
 - 2026-08-22 OQ-008/009/018を決定。T16（重複禁止）を追加し、T07をカスケード削除の内容へ更新。AC-012/013を対応表へ追加
 - 2026-08-21 T06 PRのreview反映。fetch-jsonでclient失敗を日本語化、GET/PUT `/words/:wordId` と一覧のHTTP契約test追加、query paramのstrict検証、一覧を3 queryへ分離しIN句を50件分割、SSRで不一致になるDOM idを修正。T05マージ後に残っていた同種の指摘もここで解消
+- 2026-08-22 T06をマージ済み、T16を作業中へ更新
+- 2026-08-22 T16をPR中へ更新。`0002_boring_kabuki` で UNIQUE(user_id, normalized_term) を適用

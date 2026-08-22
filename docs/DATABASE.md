@@ -1,6 +1,6 @@
 # DB設計: Tango MVP
 
-> 状態: **T06で一覧queryのplanを実測し、ページ確定と統計集計を分離。OQ-008/009決定済みだが、対応migrationは未適用（9.1）。**
+> 状態: **T16でOQ-008の `UNIQUE(user_id, normalized_term)` を適用。OQ-009のCASCADEは未適用でT07が担当（9.1）。**
 > 採用DB: Cloudflare D1（SQLite互換）
 > ORM/migration: Drizzle ORM / Drizzle Kit
 
@@ -160,13 +160,13 @@ indexes: `verification_identifier_idx` on (`identifier`)。
 table constraints:
 
 - `UNIQUE(id, user_id)` — `test_results(word_id, user_id)`の複合FKで所有者一致をDBでも保証する。
-- `UNIQUE(user_id, normalized_term)` — OQ-008決定によりユーザー単位の重複登録を禁止する。**未適用**。`0001_minor_wasp` は制約なしで適用済みのため、新しいmigrationで追加する（9章）。
+- `UNIQUE(user_id, normalized_term)` — OQ-008決定によりユーザー単位の重複登録を禁止する。T16の `0002_boring_kabuki` で `words_user_id_normalized_term_unique` として適用済み。
 - 重複判定の真値はこのUNIQUE制約。applicationの事前照合は分かりやすいエラーのためであり、同時実行で抜けた分はUNIQUE違反を捕まえて `409` へ変換する。
 
 indexes:
 
 - `idx_words_user_created` on `(user_id, created_at, id)` — 一覧・cursor。DDLはASCで作る。SQLiteは同じindexを逆順に走査できるため、`ORDER BY created_at DESC, id DESC` でもDESC指定は不要。
-- `idx_words_user_normalized_term` on `(user_id, normalized_term)` — 重複照合・将来検索。`UNIQUE(user_id, normalized_term)` を追加したら同一列構成になるため、UNIQUE index側へ統合してこの非UNIQUE indexは削除する。
+- `words_user_id_normalized_term_unique` on `(user_id, normalized_term)` — 重複照合・将来検索。非UNIQUEの `idx_words_user_normalized_term` は同一列構成だったため、T16でこのUNIQUE indexへ統合して削除した。
 
 ### 3.3 `word_meanings`
 
@@ -318,12 +318,21 @@ GROUP BY word_id;
 
 ### 9.1 予定しているmigration（OQ-008/009の反映）
 
-`0001_minor_wasp` は適用済みなので改変せず、新しい連番migrationで次の2点を入れる。SQLiteはUNIQUE制約とFKをALTERで足せないため、`words` と `test_results` はテーブル再作成になる。Drizzle Kitの生成SQLをレビューしてから適用する。
+`0001_minor_wasp` は適用済みなので改変せず、新しい連番migrationで次の2点を入れる。Drizzle Kitの生成SQLをレビューしてから適用する。
 
-| 変更 | 対象 | 注意点 |
-|---|---|---|
-| `UNIQUE(user_id, normalized_term)` 追加 | `words` | **既存の重複行があると失敗する**。適用前に重複を検出し、解消手順を決める。非UNIQUEの `idx_words_user_normalized_term` は重複するので削除する |
-| FK を `RESTRICT` → `CASCADE` | `test_results` | 複合FK `(word_id, user_id)`。再作成中の順序制御に `PRAGMA defer_foreign_keys` を使う |
+| 変更 | 対象 | 状態 | 注意点 |
+|---|---|---|---|
+| `UNIQUE(user_id, normalized_term)` 追加 | `words` | `0002_boring_kabuki` で適用（T16） | **既存の重複行があると失敗する**。適用前に重複を検出する。非UNIQUEの `idx_words_user_normalized_term` は同一列構成になるので削除する |
+| FK を `RESTRICT` → `CASCADE` | `test_results` | 未適用（T07） | 複合FK `(word_id, user_id)`。FKはテーブル制約なので再作成が要る。順序制御に `PRAGMA defer_foreign_keys` を使う |
+
+`words` はテーブル再作成にならない。Drizzleはsqlite方言の `unique()` をテーブル制約ではなくUNIQUE indexとして出力するため、`0001_minor_wasp` の `words_id_user_id_unique` と同じく `CREATE UNIQUE INDEX` で足せる。生成された `0002_boring_kabuki` は2文だけである。
+
+```sql
+DROP INDEX `idx_words_user_normalized_term`;
+CREATE UNIQUE INDEX `words_user_id_normalized_term_unique` ON `words` (`user_id`,`normalized_term`);
+```
+
+テーブル再作成が要るのは、FKという真のテーブル制約を変える `test_results`（T07）だけである。
 
 適用前チェック:
 
@@ -333,7 +342,16 @@ SELECT user_id, normalized_term, COUNT(*) AS n
 FROM words GROUP BY user_id, normalized_term HAVING n > 1;
 ```
 
+0件でない場合、`0002_boring_kabuki` の `CREATE UNIQUE INDEX` が失敗してmigrationが止まる。データを壊す方向へ自動で寄せず、どの行を残すかを決めてから再実行する。
+
 local → preview → production の順に適用し、各段でintegration testを回す。productionはTime Travelの復帰ポイントを確認してから適用する。
+
+rollback: `0002_boring_kabuki` は index の入れ替えだけなので、逆順の2文で戻せる。データ移行はない。
+
+```sql
+DROP INDEX `words_user_id_normalized_term_unique`;
+CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_term`);
+```
 
 ### 9.2 手順
 
@@ -383,3 +401,4 @@ local → preview → production の順に適用し、各段でintegration test�
 - 2026-08-21 T05で一覧SQLの `EXPLAIN QUERY PLAN` が `idx_words_user_created` を使うことをintegration testで確認。OQ-012は未決
 - 2026-08-21 T06のreviewで一覧を3 queryへ分離。index記載をDDL実体（ASC）へ訂正し、IN句の50件分割とTEMP B-TREE非発生の表明を追加
 - 2026-08-22 OQ-008/009を決定。`words`へ`UNIQUE(user_id, normalized_term)`、`test_results`のFKをCASCADEへ変更する方針を記載。migrationは未適用でT07以降に実施
+- 2026-08-22 T16で `0002_boring_kabuki` を追加し `UNIQUE(user_id, normalized_term)` を適用。`words`はDrizzleがUNIQUE indexを出すためテーブル再作成にならない旨へ9.1を訂正し、rollback SQLを追加
