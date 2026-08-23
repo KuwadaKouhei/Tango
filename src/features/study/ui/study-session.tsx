@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import type { StudyAnswerResult } from '../api/study-schemas'
 import { resolvePlannedCount } from '../domain/planned-count'
 import { STUDY_LIMITS } from '../domain/study-limits'
 import type { StudyCountChoice, StudyMode } from '../domain/study-limits'
 import type { StudyQuestion } from '../domain/study-question'
+import { describeAnswerJudgement } from './describe-answer-judgement'
+import { requestAnswer } from './request-answer'
 import { requestHint } from './request-hint'
 import { requestNextQuestion } from './request-next-question'
 
@@ -25,12 +28,16 @@ export function StudySession({ mode, count }: StudySessionSearch) {
   const [hintText, setHintText] = useState<string | null>(null)
   const [isHintPending, setIsHintPending] = useState(false)
   const [answerDraft, setAnswerDraft] = useState('')
+  const [isAnswerPending, setIsAnswerPending] = useState(false)
+  const [lastResult, setLastResult] = useState<StudyAnswerResult | null>(null)
 
   const loadQuestion = async (excluded: readonly string[]) => {
     setStatus('loading')
     setErrorMessage(null)
     setHintText(null)
     setAnswerDraft('')
+    setLastResult(null)
+    setIsAnswerPending(false)
 
     const result = await requestNextQuestion({
       mode,
@@ -76,6 +83,7 @@ export function StudySession({ mode, count }: StudySessionSearch) {
       setExcludeWordIds(nextExcluded)
       setQuestion(null)
       setHintText(null)
+      setLastResult(null)
       setStatus('finished')
       return
     }
@@ -85,7 +93,7 @@ export function StudySession({ mode, count }: StudySessionSearch) {
   }
 
   const revealHint = async () => {
-    if (!question || hintText !== null || isHintPending) {
+    if (!question || hintText !== null || isHintPending || lastResult) {
       return
     }
 
@@ -99,6 +107,27 @@ export function StudySession({ mode, count }: StudySessionSearch) {
     }
 
     setHintText(result.hint)
+  }
+
+  const submitAnswer = async () => {
+    if (!question || isAnswerPending || lastResult) {
+      return
+    }
+
+    setIsAnswerPending(true)
+    setErrorMessage(null)
+    const result = await requestAnswer({
+      wordId: question.wordId,
+      answer: answerDraft,
+      hintUsed: hintText !== null,
+    })
+    setIsAnswerPending(false)
+    if (!result.ok) {
+      setErrorMessage(result.message)
+      return
+    }
+
+    setLastResult(result.result)
   }
 
   if (status === 'empty') {
@@ -158,7 +187,7 @@ export function StudySession({ mode, count }: StudySessionSearch) {
             問題 {String(shownCount)} / {String(plannedCount)}
           </p>
           <p className="study-term">{question.term}</p>
-          {question.hasHint ? (
+          {question.hasHint && lastResult === null ? (
             <p>
               <button
                 type="button"
@@ -180,30 +209,65 @@ export function StudySession({ mode, count }: StudySessionSearch) {
             </p>
           ) : null}
 
-          <p>
-            <label htmlFor="study-answer">日本語の意味</label>
-            <br />
-            <input
-              id="study-answer"
-              name="answer"
-              value={answerDraft}
-              maxLength={STUDY_LIMITS.answerMaxChars}
-              autoComplete="off"
-              onChange={(event) => {
-                setAnswerDraft(event.target.value)
+          {lastResult === null ? (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void submitAnswer()
               }}
-            />
-          </p>
-          <p>
-            回答の正誤判定は次の更新で追加します。今は出題とヒントを確認できます。
-          </p>
-          <p>
-            <button type="button" onClick={showNext}>
-              {shownCount >= plannedCount ? '終了する' : '次の問題'}
-            </button>
-            {' / '}
-            <Link to="/study">やめる</Link>
-          </p>
+            >
+              <p>
+                <label htmlFor="study-answer">日本語の意味</label>
+                <br />
+                <input
+                  id="study-answer"
+                  name="answer"
+                  value={answerDraft}
+                  maxLength={STUDY_LIMITS.answerMaxChars}
+                  autoComplete="off"
+                  disabled={isAnswerPending}
+                  onChange={(event) => {
+                    setAnswerDraft(event.target.value)
+                  }}
+                />
+              </p>
+              <p>
+                <button
+                  type="submit"
+                  disabled={isAnswerPending || answerDraft.trim().length === 0}
+                >
+                  {isAnswerPending ? '判定中…' : '回答する'}
+                </button>
+                {' / '}
+                <Link to="/study">やめる</Link>
+              </p>
+            </form>
+          ) : (
+            <div className="study-result" role="status">
+              <p
+                className={
+                  lastResult.isCorrect ? 'study-correct' : 'study-incorrect'
+                }
+              >
+                {lastResult.isCorrect ? '正解' : '不正解'}
+              </p>
+              <p>判定: {describeAnswerJudgement(lastResult)}</p>
+              <p>あなたの回答: {lastResult.answer}</p>
+              <p>登録した意味</p>
+              <ul>
+                {lastResult.meanings.map((meaning, index) => (
+                  <li key={`${String(index)}:${meaning}`}>{meaning}</li>
+                ))}
+              </ul>
+              <p>
+                <button type="button" onClick={showNext}>
+                  {shownCount >= plannedCount ? '終了する' : '次の問題へ'}
+                </button>
+                {' / '}
+                <Link to="/study">やめる</Link>
+              </p>
+            </div>
+          )}
         </>
       ) : null}
     </section>

@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T09で study 出題・ヒントを追加済み**
+> 状態: **T10で study の回答判定と履歴保存を追加済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -101,10 +101,15 @@ Tango/
 │   │   │   │   ├── study-limits.ts
 │   │   │   │   ├── study-question.ts
 │   │   │   │   ├── planned-count.ts
-│   │   │   │   └── question-selector.ts
+│   │   │   │   ├── question-selector.ts
+│   │   │   │   ├── normalize-for-judgement.ts
+│   │   │   │   ├── answer-judge.ts
+│   │   │   │   ├── prepare-answer.ts
+│   │   │   │   └── semantic-judge.ts
 │   │   │   ├── application/
 │   │   │   │   ├── get-hint.ts
-│   │   │   │   └── select-question.ts
+│   │   │   │   ├── select-question.ts
+│   │   │   │   └── answer-question.ts
 │   │   │   ├── api/
 │   │   │   │   ├── study-routes.ts
 │   │   │   │   └── study-schemas.ts
@@ -113,13 +118,14 @@ Tango/
 │   │   │   │   ├── study-session.tsx
 │   │   │   │   ├── study-session-search.ts
 │   │   │   │   ├── request-next-question.ts
-│   │   │   │   └── request-hint.ts
+│   │   │   │   ├── request-hint.ts
+│   │   │   │   ├── request-answer.ts
+│   │   │   │   └── describe-answer-judgement.ts
 │   │   │   └── public.ts
 │   │   └── history/
 │   │       ├── domain/
-│   │       ├── application/
-│   │       ├── api/
-│   │       ├── ui/
+│   │       │   ├── test-result.ts
+│   │       │   └── test-result-repository.ts
 │   │       └── public.ts
 │   ├── infrastructure/
 │   │   ├── auth/
@@ -137,7 +143,7 @@ Tango/
 │   │   │       ├── d1-word-repository.ts
 │   │   │       └── d1-test-result-repository.ts
 │   │   ├── semantic-judge/
-│   │   │   └── workers-ai-semantic-judge.ts
+│   │   │   └── workers-ai-semantic-judge.ts  # T12。T10では作らない
 │   │   └── translation/
 │   │       └── deepl-translation-service.ts
 │   ├── platform/
@@ -321,7 +327,7 @@ composition-root -> application + infrastructure
 - T01で確定したscaffold差: aliasは `#/*`、CSSは `src/styles.css`、Prettier設定は `prettier.config.js`、Start middleware用 `src/start.ts` は未生成（必要になったタスクで追加）。
 - T02で確定: Drizzle KitのSQLは `drizzle/` 直下（`drizzle/migrations/` ではない）。secret型は `src/env.d.ts` で Cloudflare.Env へ mergeする。
 - AI/翻訳providerがWorkers bindingでなくHTTP APIの場合も、adapter配置は変えない。
-- T10で `features/study/domain/normalize-for-judgement.ts` を追加する。保存用 normalize とは分ける。
+- T10で `features/study/domain/normalize-for-judgement.ts` を追加した。保存用 normalize とは分ける。`SemanticJudge` portはT10で型と呼び出し点だけ用意し、Workers AI adapterはT12。
 
 ## 10. 参照
 
@@ -347,3 +353,4 @@ composition-root -> application + infrastructure
 - 2026-08-23 OQ-005/010決定。終了画面はsession tableなし、検索はwords featureへ足す。T10で判定用normalizeをstudy domainへ置く
 - 2026-08-23 T18で word-list-search と escape-like-pattern を追加
 - 2026-08-23 T09で study feature、`/study`、`/study/session`、study-api test を追加。判定と苦手抽選のfileはT10/T11
+- 2026-08-23 T10で判定用normalize、answer API、history/public.ts、セッション回答UIを追加。T12 adapterは未作成

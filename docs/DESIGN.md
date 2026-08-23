@@ -538,7 +538,7 @@ UIは`accuracy === null`を白 `#ffffff`、回答済みは OQ-007 のHSL補間�
 
 ## 9. 設計思想からの逸脱
 
-T17時点の意図的な限定:
+T10時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
 - 公開DELETEはT07で適用済み。履歴もCASCADEで消える。確認操作なしではDELETEを送らない。
@@ -548,7 +548,10 @@ T17時点の意図的な限定:
 - 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
 - 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
 - カード色の補間はOQ-007。実装はT14。一覧は未回答と正解率を文字でも示す。
-- T09は出題とヒントまで。回答の判定APIはT10。苦手優先の抽選はT11。
+- T09は出題とヒントまで。回答の判定APIはT10で追加した。苦手優先の抽選はT11。
+- T10のlocal不一致は、DBの `judge_type` が `exact|normalized|ai` しか置けないため `normalized` + `isCorrect:false` で保存する。第4のenumは作らない。T13は `!isCorrect && !judgedByAi` を「一致しませんでした」と見せる。T12が不一致を保存前にAIへ送る。
+- T10は `SemanticJudge` を注入しない。exact/normalizedで決着したらAIを呼ばない。不一致でもT10ではAI 0回。
+- T10の結果UIは正誤・判定段階・登録意味と次問まで。終了結果の集計画面はT13。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
@@ -581,4 +584,5 @@ T17時点の意図的な限定:
 - 2026-08-23 OQ-002/003/004/005/006/007/010決定。出題・判定正規化・苦手重み・AI障害・検索・終了結果・カード色を設計へ反映。`test_sessions` は作らない
 - 2026-08-23 T18で一覧検索 `q` を実装。LIKE は `ESCAPE '!'`
 - 2026-08-23 T09で `POST /api/v1/study/questions` と hint GET を実装。`weak` は422。回答判定はT10
+- 2026-08-23 T10で `POST /api/v1/study/answers` と local判定を実装。AI adapterはT12。local missの `judge_type` は逸脱節を参照
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新
