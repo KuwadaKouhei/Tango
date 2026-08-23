@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T18（単語検索）作業中。ブランチは `feature/T18-word-search`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T09（ランダム出題）PR中。ブランチは `cursor/t09-random-study-4bb7`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -124,6 +124,6 @@
 - OQ-008/009/018: 2026-08-22に決定済み。
 - OQ-001/015: 2026-08-23再決定。DeepL API Free、Workers Free。secret名は `DEEPL_AUTH_KEY`。
 - OQ-002/003/004/005/006/007/010: 2026-08-23決定済み。詳細は `docs/OPEN_QUESTIONS.md` 3節。
-- T01〜T08, T16, T17: マージ済み。T18作業中。
+- T01〜T08, T16, T17, T18: マージ済み。T09 PR中。
 - 残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。T12の model ID はPOC-05でlockする。
 - 各タスク前: TASKSの意思決定列にあるOQ。

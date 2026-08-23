@@ -7,4 +7,5 @@ export const INPUT_LIMITS = {
   meaningMaxChars: 200,
   meaningMaxCount: 20,
   hintMaxChars: 500,
+  answerMaxChars: 500,
 } as const

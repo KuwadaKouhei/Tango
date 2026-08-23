@@ -235,6 +235,23 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
 
     findOwnedIdByNormalizedTerm,
 
+    listOwnedQuestionCandidates: async (ownerUserId) => {
+      const rows = await db
+        .select({
+          id: words.id,
+          term: words.term,
+          hint: words.hint,
+        })
+        .from(words)
+        .where(eq(words.userId, ownerUserId))
+
+      return rows.map((row) => ({
+        id: row.id,
+        term: row.term,
+        hasHint: row.hint !== null,
+      }))
+    },
+
     listByOwner: async (input) => {
       const rows = await buildOwnedWordsPageQuery(db, input)
       const hasNext = rows.length > input.limit

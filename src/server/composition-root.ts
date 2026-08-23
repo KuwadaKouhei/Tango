@@ -1,4 +1,5 @@
 import { systemClock } from '../platform/clock'
+import { systemRandom } from '../platform/random'
 import { createDb } from '../infrastructure/db/drizzle'
 import { createD1TestResultRepository } from '../infrastructure/db/repositories/d1-test-result-repository'
 import { createD1WordRepository } from '../infrastructure/db/repositories/d1-word-repository'
@@ -10,6 +11,7 @@ export const createAppServices = (bindings: AuthBindings) => {
 
   return {
     clock: systemClock,
+    random: systemRandom,
     wordRepository: createD1WordRepository(db),
     testResultRepository: createD1TestResultRepository(db),
     translationService: createDeeplTranslationService({

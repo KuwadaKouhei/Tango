@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T18 PR中（feature/T18-word-search）。**
+> 状態: **T09 PR中（cursor/t09-random-study-4bb7）。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -28,8 +28,8 @@
 | T07 | 単語削除 | AC-003,013 | T06 | OQ-009（決定済み） | `feature/T07-word-delete` | ✅マージ済み |
 | T08 | 翻訳候補による登録補助 | AC-004 | T04 | OQ-001,015（決定済み） | `feature/T08-translation` | ✅マージ済み |
 | T17 | 翻訳providerをDeepLへ切り替え | AC-004 | T08 | OQ-001再決定 | `feature/T17-deepl-translation` | ✅マージ済み |
-| T18 | 単語一覧の検索 | AC-014 | T05 | OQ-010（決定済み） | `feature/T18-word-search` | 🟡PR中 |
-| T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | OQ-005（決定済み） | `feature/T09-random-study` | ⬜未着手 |
+| T18 | 単語一覧の検索 | AC-014 | T05 | OQ-010（決定済み） | `feature/T18-word-search` | ✅マージ済み |
+| T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | OQ-005（決定済み） | `cursor/t09-random-study-4bb7` | 🟡PR中 |
 | T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | OQ-004,018（決定済み） | `feature/T10-local-judgement` | ⬜未着手 |
 | T11 | 苦手優先出題 | AC-005 | T10 | OQ-006（決定済み）。OQ-012は個人規模で計測 | `feature/T11-weak-study` | ⬜未着手 |
 | T12 | AI意味判定fallback | AC-008,009 | T10 | OQ-002,003,015（決定済み）。model IDはPOC-05 | `feature/T12-ai-judgement` | ⬜未着手 |
@@ -347,3 +347,4 @@ OQ-010のうち重複誘導UI、間違い再テスト、AI手動修正は未採�
 - 2026-08-23 T17をマージ済み。OQ-002/003/004/005/006/007/010を決定。T18（検索）を追加し、T13に終了結果を含める
 - 2026-08-23 T18を作業中へ更新
 - 2026-08-23 T18をPR中へ更新
+- 2026-08-23 T18をマージ済みへ更新。T09をPR中へ更新
