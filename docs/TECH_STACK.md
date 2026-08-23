@@ -1,7 +1,7 @@
 # 技術スタック選定: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **T06で `@tanstack/react-query` 5.101.4 をlockfileへ追加済み（OQ-013/OQ-014）。T08で翻訳をWorkers AI `@cf/meta/m2m100-1.2b` に固定（OQ-001）**
+> 状態: **T06で `@tanstack/react-query` 5.101.4 をlockfileへ追加済み（OQ-013/OQ-014）。T17で翻訳をDeepL API Freeに固定（OQ-001再決定）**
 > 要件で指定された中核スタックを尊重し、公式CLIとnpmレジストリで互換セットを確認した。以後の更新は独立PRでbuild/testを再実行する。
 
 ## 1. 選定方針
@@ -28,7 +28,7 @@
 | DB | Cloudflare D1 | 要件指定、Workers binding、SQLite互換RDB、FK |
 | ORM/migration | Drizzle ORM + Drizzle Kit | D1公式対応、TypeScript schema、SQLを隠し過ぎない |
 | 認証 | Better Auth + Google OAuth | 要件指定、Google social provider、D1/Drizzle対応 |
-| AI/翻訳 | port + Workers AI `@cf/meta/m2m100-1.2b` | 同一Cloudflare基盤、binding利用。翻訳はT08で固定。AI判定は未決 |
+| AI/翻訳 | port + DeepL API Free | 翻訳品質を優先。secretはWorkers secret。AI判定は未決 |
 | build/deploy | Vite + Cloudflare Vite plugin + Wrangler | TanStack Start公式Cloudflare手順 |
 | package manager | pnpm | lockfile、厳格な依存、workspace拡張余地 |
 | unit/integration | Vitest + Workers Vitest integration | Workers runtimeとD1 migrationをローカル検証 |
@@ -134,14 +134,14 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 
 | 候補 | 統合 | 品質/機能 | ロックイン | 判定 |
 |---|---|---|---|---|
-| Workers AI `@cf/meta/m2m100-1.2b` | bindingで低運用 | 1リクエスト1訳文。live品質はpreview人手 | Cloudflare model ID | **翻訳で採用（OQ-001）** |
-| DeepL | 翻訳に強い | 翻訳用途へ明確 | 外部API/料金 | 翻訳の交換候補 |
+| Workers AI `@cf/meta/m2m100-1.2b` | bindingで低運用 | 単語帳の意味候補としては品質不足 | Cloudflare model ID | 翻訳は不採用。T12のAI判定候補 |
+| DeepL API Free | 外部HTTP + secret | EN→JAの短文に強い。月50万文字 | 外部API/料金 | **翻訳で採用（OQ-001再決定）** |
 | Google Translation | 翻訳API | 成熟 | GCP追加 | 翻訳の交換候補 |
 | 外部LLM API | AI判定品質を選べる | model/料金/データ取扱差 | provider依存 | AI比較候補 |
 
-採用理由: `TranslationService` / `SemanticJudge` portは交換境界として残す。翻訳adapterの最初の実装はWorkers AI `@cf/meta/m2m100-1.2b`（OQ-001）。AI判定のmodelはPOC-05/OQ-002まで固定しない。
+採用理由: `TranslationService` / `SemanticJudge` portは交換境界として残す。翻訳adapterはDeepL API Free（OQ-001、2026-08-23）。公式SDKは入れず `fetch` する。AI判定のmodelはPOC-05/OQ-002まで固定しない。
 
-出典: [Workers AI](https://developers.cloudflare.com/workers-ai/)、[m2m100-1.2b](https://developers.cloudflare.com/workers-ai/models/m2m100-1.2b/)、[Limits](https://developers.cloudflare.com/workers-ai/platform/limits/)、[Pricing](https://developers.cloudflare.com/workers-ai/platform/pricing/)
+出典: [DeepL Auth](https://developers.deepl.com/docs/getting-started/auth)、[Translate API](https://developers.deepl.com/docs/api-reference/translate)、[Usage limits](https://developers.deepl.com/docs/resources/usage-limits)、[Workers AI](https://developers.cloudflare.com/workers-ai/)
 
 ### 4.6 テスト
 
@@ -168,7 +168,7 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 - TanStack StartはRC表記のため、minor更新も独立PRでbuild/E2Eを再実行する。
 - exact versionと`pnpm-lock.yaml`をcommitし、CIは`--frozen-lockfile`を使う。
 - `compatibility_date`はPoC実施日を明示し、更新はcompatibility test付きPRで行う。
-- Workers AI model ID、prompt version、料金情報はコード定数と運用文書で追跡する。
+- Workers AI model ID、DeepL endpoint、prompt version、料金情報はコード定数と運用文書で追跡する。
 - Dependabot/Renovateはリポジトリ確立後に検討し、自動mergeしない。
 
 ## 7. 要件・思想との対応
@@ -190,3 +190,4 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 - 2026-08-20 T03で zod 4.4.3 を固定
 - 2026-08-21 T06で `@tanstack/react-query` 5.101.4 を固定
 - 2026-08-22 T08で翻訳providerを Workers AI `@cf/meta/m2m100-1.2b` に固定（OQ-001）。プランはWorkers Free（OQ-015）
+- 2026-08-23 T17で翻訳providerを DeepL API Free に再固定（OQ-001）。secret名は `DEEPL_AUTH_KEY`

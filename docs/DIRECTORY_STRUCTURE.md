@@ -131,7 +131,7 @@ Tango/
 │   │   ├── semantic-judge/
 │   │   │   └── workers-ai-semantic-judge.ts
 │   │   └── translation/
-│   │       └── workers-ai-translation-service.ts
+│   │       └── deepl-translation-service.ts
 │   ├── platform/
 │   │   ├── app-error.ts
 │   │   ├── clock.ts
@@ -271,7 +271,7 @@ composition-root -> application + infrastructure
 
 ### 6.1 新しい翻訳providerを追加
 
-1. `TranslationService` portとcontract testは変更しない。
+1. `TranslationService` portの入出力契約（成功/502/503/429）は維持する。adapter固有のrequest/response testは差し替える。
 2. `src/infrastructure/translation/<provider>-translation-service.ts`を追加する。
 3. provider応答Zod schemaとerror mappingをadapter内へ置く。
 4. `composition-root.ts`の設定選択だけを変える。
@@ -330,3 +330,4 @@ composition-root -> application + infrastructure
 - 2026-08-22 T16で word-duplicate-api.test.ts を追加
 - 2026-08-22 T07で word-delete-api.test.ts を追加
 - 2026-08-22 T08で translation feature、Workers AI adapter、fetch-jsonのplatform昇格、contract testを追加
+- 2026-08-23 T17で翻訳adapterを deepl-translation-service へ差し替え

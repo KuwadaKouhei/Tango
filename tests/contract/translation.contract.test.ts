@@ -1,23 +1,49 @@
 import { describe, expect, it } from 'vitest'
 import { AppError } from '../../src/platform/app-error'
-import { createWorkersAiTranslationService } from '../../src/infrastructure/translation/workers-ai-translation-service'
-import type { WorkersAiRunner } from '../../src/infrastructure/translation/workers-ai-translation-service'
+import { TRANSLATION_LIMITS } from '../../src/features/translation/domain/translation-limits'
+import { createDeeplTranslationService } from '../../src/infrastructure/translation/deepl-translation-service'
+import type { FetchLike } from '../../src/infrastructure/translation/deepl-translation-service'
 
 const neverAbort = new AbortController().signal
+const AUTH_KEY = 'test-deepl-auth-key:fx'
 
-const serviceOf = (run: WorkersAiRunner['run']) =>
-  createWorkersAiTranslationService({ run })
+const jsonResponse = (body: unknown, status = 200): Response =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
 
-describe('Workers AI translation contract', () => {
-  it('成功時はtranslated_textを1件の候補にする', async () => {
-    const service = serviceOf(async () => ({ translated_text: ' 問題 ' }))
+const serviceOf = (fetchImpl: FetchLike) =>
+  createDeeplTranslationService({ authKey: AUTH_KEY, fetchImpl })
+
+describe('DeepL translation contract', () => {
+  it('成功時はtranslations[0].textを1件の候補にする', async () => {
+    const service = serviceOf(async (url, init) => {
+      expect(url).toBe(TRANSLATION_LIMITS.deeplEndpoint)
+      expect(url).not.toMatch(/auth_key/iu)
+      expect(init.method).toBe('POST')
+      const headers = new Headers(init.headers)
+      expect(headers.get('Authorization')).toBe(`DeepL-Auth-Key ${AUTH_KEY}`)
+      expect(headers.get('content-type')).toBe('application/json')
+      const body: unknown = JSON.parse(String(init.body))
+      expect(body).toEqual({
+        text: ['issue'],
+        source_lang: 'EN',
+        target_lang: 'JA',
+      })
+      expect(JSON.stringify(body)).not.toMatch(/auth_key|DeepL-Auth-Key/iu)
+      return jsonResponse({
+        translations: [{ text: ' 問題 ', detected_source_language: 'EN' }],
+      })
+    })
+
     await expect(
       service.translateToJapanese({ term: 'issue' }, neverAbort),
     ).resolves.toEqual([{ text: '問題' }])
   })
 
   it('契約外の応答は502にする', async () => {
-    const service = serviceOf(async () => ({ request_id: 'async-1' }))
+    const service = serviceOf(async () => jsonResponse({ message: 'nope' }))
     await expect(
       service.translateToJapanese({ term: 'issue' }, neverAbort),
     ).rejects.toMatchObject({
@@ -26,8 +52,10 @@ describe('Workers AI translation contract', () => {
     })
   })
 
-  it('空のtranslated_textは502にする', async () => {
-    const service = serviceOf(async () => ({ translated_text: '   ' }))
+  it('空の訳文は502にする', async () => {
+    const service = serviceOf(async () =>
+      jsonResponse({ translations: [{ text: '   ' }] }),
+    )
     await expect(
       service.translateToJapanese({ term: 'issue' }, neverAbort),
     ).rejects.toMatchObject({ code: 'PROVIDER_INVALID_RESPONSE' })
@@ -35,9 +63,11 @@ describe('Workers AI translation contract', () => {
 
   it('timeoutしたAbortSignalは503にする', async () => {
     const service = serviceOf(
-      () =>
-        new Promise(() => {
-          // 応答しない。signal側で打ち切る。
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted.', 'AbortError'))
+          })
         }),
     )
     const controller = new AbortController()
@@ -53,7 +83,9 @@ describe('Workers AI translation contract', () => {
   })
 
   it('呼び出し前にabort済みなら503にする', async () => {
-    const service = serviceOf(async () => ({ translated_text: '問題' }))
+    const service = serviceOf(async () => {
+      throw new Error('fetch should not run')
+    })
     const controller = new AbortController()
     controller.abort()
     await expect(
@@ -62,22 +94,27 @@ describe('Workers AI translation contract', () => {
   })
 
   it('providerの429はRATE_LIMITEDへ変換する', async () => {
-    const error = Object.assign(new Error('too many requests'), { status: 429 })
-    const service = serviceOf(async () => {
-      throw error
-    })
+    const service = serviceOf(async () =>
+      jsonResponse({ message: 'slow' }, 429),
+    )
+    await expect(
+      service.translateToJapanese({ term: 'issue' }, neverAbort),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED', httpStatus: 429 })
+  })
+
+  it('月次quotaの456もRATE_LIMITEDへ変換する', async () => {
+    const service = serviceOf(async () =>
+      jsonResponse({ message: 'quota' }, 456),
+    )
     await expect(
       service.translateToJapanese({ term: 'issue' }, neverAbort),
     ).rejects.toMatchObject({ code: 'RATE_LIMITED', httpStatus: 429 })
   })
 
   it('providerの5xxは503へ変換し、本文をerrorへ載せない', async () => {
-    const error = Object.assign(new Error('upstream boom with prompt text'), {
-      status: 503,
-    })
-    const service = serviceOf(async () => {
-      throw error
-    })
+    const service = serviceOf(async () =>
+      jsonResponse({ message: 'upstream boom with prompt text' }, 503),
+    )
     try {
       await service.translateToJapanese({ term: 'issue' }, neverAbort)
       throw new Error('expected failure')
@@ -89,5 +126,20 @@ describe('Workers AI translation contract', () => {
       })
       expect((caught as AppError).message).not.toMatch(/prompt|boom/iu)
     }
+  })
+
+  it('authKeyが空ならfetchせず503にする', async () => {
+    let called = false
+    const service = createDeeplTranslationService({
+      authKey: '   ',
+      fetchImpl: async () => {
+        called = true
+        return jsonResponse({ translations: [{ text: '問題' }] })
+      },
+    })
+    await expect(
+      service.translateToJapanese({ term: 'issue' }, neverAbort),
+    ).rejects.toMatchObject({ code: 'AI_JUDGE_UNAVAILABLE' })
+    expect(called).toBe(false)
   })
 })

@@ -6,7 +6,7 @@
 
 | ID | 論点 | 主な選択肢 | 決定期限 | 状態 |
 |---|---|---|---|---|
-| OQ-001 | 翻訳プロバイダー、モデル、候補件数、料金上限 | Workers AI / DeepL / Google Translation / その他 | T08着手前 | 決定済み（Workers AI / `@cf/meta/m2m100-1.2b` / 候補1件） |
+| OQ-001 | 翻訳プロバイダー、モデル、候補件数、料金上限 | Workers AI / DeepL / Google Translation / その他 | T08着手前 | 決定済み（DeepL API Free / 候補1件） |
 | OQ-002 | AI判定プロバイダー、モデル、プロンプト、再試行、タイムアウト | Workers AIを含む交換可能な候補 | T11着手前 | 未決 |
 | OQ-003 | AI障害時の回答扱い | 未採点で再試行 / 不正解として保存 / AIなしで不正解 | T11着手前 | 未決 |
 | OQ-004 | 正規化の追加範囲 | 句読点・記号・かなカナ・長音・表記ゆれ | T09着手前 | 未決 |
@@ -106,12 +106,30 @@ CloudflareのRate Limiting製品は使わない（OQ-015がFreeのため）。li
 
 POC-06のlive品質比較（代表単語セットでの人手確認）はこの環境では未実施。通常CIはcontract mockのみ。previewでの人手確認を残す。品質が足りなければportを保ったままadapterを差し替える。
 
+### OQ-001（2026-08-23 再決定）
+
+previewで `@cf/meta/m2m100-1.2b` の訳質が単語帳の意味候補として不足したため、**DeepL API Free** へ差し替える。利用者決定。
+
+| 項目 | 確定値 | 理由 |
+|---|---|---|
+| provider | DeepL API Free | EN→JAの短文・単語に強い。月50万文字まで無償 |
+| endpoint | `https://api-free.deepl.com/v2/translate` | Freeキー（`:fx`）用ホスト |
+| 認証 | Workers secret `DEEPL_AUTH_KEY` | `Authorization: DeepL-Auth-Key …`。query/bodyにkeyを載せない |
+| 候補件数 | 1 | Translate APIは1リクエスト1訳文。追加の意味はフォームで手入力 |
+| 入力上限 | term 100文字 | OQ-018と同じ |
+| 言語 | `en` → `ja` のみ（DeepLへは `EN` / `JA`） | TRANS-001。他方向は422 |
+| timeout | 8秒（wall clock、AbortSignal） | 変更なし。自動retryしない |
+| rate limit | 認証ユーザーあたり 10回 / 60秒 | isolate内。DeepLの429/456も `RATE_LIMITED` へ変換 |
+
+Workers AI bindingはT12のAI判定用に残し、翻訳からは外す。通常CIはDeepLをlive callしない。
+
 ### OQ-015（2026-08-22）
 
 Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 
 - Paid専用のRate Limiting bindingやUnbound CPU前提の処理をMVPへ入れない。
-- Workers AIはFreeのneuron枠内で使う前提とし、入力長・timeout・ユーザー単位rate limitで消費を抑える。
+- 翻訳はDeepL API Freeの文字数枠で使う。入力長・timeout・ユーザー単位rate limitで消費を抑える。
+- Workers AIのneuron枠はT12のAI判定まで使わない。
 - D1 Freeの容量上限は従来どおり。規模目標はOQ-012が未決のまま。
 
 ## 4. 更新手順
@@ -131,3 +149,4 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 - 2026-08-21 T06着手。OQ-008/018は未決のまま。OQ-009は未決のため公開DELETEは作らない
 - 2026-08-22 OQ-008を「ユーザー単位で禁止・正規形で判定」、OQ-009を「カスケード削除」、OQ-018を「候補値のまま確定」として決定済みへ更新
 - 2026-08-22 OQ-001をWorkers AI `@cf/meta/m2m100-1.2b`・候補1件・入力100文字・rate limit、OQ-015をWorkers Freeとして決定済みへ更新
+- 2026-08-23 OQ-001をDeepL API Freeへ再決定。候補1件・入力100文字・timeout/rate limitは維持
