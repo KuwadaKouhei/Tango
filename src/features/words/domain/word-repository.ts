@@ -7,11 +7,13 @@ import type {
   WordWithStats,
 } from './word'
 import type { Page, WordListCursor } from './word-list-page'
+import type { WordListSearchNeedles } from './word-list-search'
 
 export type ListWordsQuery = {
   ownerUserId: UserId
   cursor: WordListCursor | null
   limit: number
+  search?: WordListSearchNeedles | null
 }
 
 export type WordRepository = {

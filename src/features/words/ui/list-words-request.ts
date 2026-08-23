@@ -7,10 +7,14 @@ export type ListWordsClientResult =
 
 export const listWordsRequest = async (input: {
   cursor: string | null
+  q?: string
 }): Promise<ListWordsClientResult> => {
   const params = new URLSearchParams()
   if (input.cursor) {
     params.set('cursor', input.cursor)
+  }
+  if (input.q) {
+    params.set('q', input.q)
   }
 
   const query = params.toString()

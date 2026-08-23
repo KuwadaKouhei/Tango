@@ -4,11 +4,13 @@ import { WORD_LIST_PAGE } from '../domain/word-list-page'
 import type { Page } from '../domain/word-list-page'
 import type { WordWithStats } from '../domain/word'
 import type { WordRepository } from '../domain/word-repository'
+import { toSearchNeedles } from '../domain/word-list-search'
 
 export const listOwnedWords = async (input: {
   actorUserId: string
   cursor: string | null
   limit: number | null
+  searchQuery?: string | null
   wordRepository: WordRepository
 }): Promise<Page<WordWithStats>> => {
   const limit = input.limit ?? WORD_LIST_PAGE.defaultLimit
@@ -26,9 +28,25 @@ export const listOwnedWords = async (input: {
   const cursor =
     input.cursor === null ? null : decodeWordListCursor(input.cursor)
 
+  const trimmedQuery = input.searchQuery?.trim() ?? ''
+  if (trimmedQuery.length > 0) {
+    const search = toSearchNeedles(trimmedQuery)
+    if (!search) {
+      return { items: [], nextCursor: null }
+    }
+
+    return input.wordRepository.listByOwner({
+      ownerUserId: input.actorUserId,
+      cursor,
+      limit,
+      search,
+    })
+  }
+
   return input.wordRepository.listByOwner({
     ownerUserId: input.actorUserId,
     cursor,
     limit,
+    search: null,
   })
 }

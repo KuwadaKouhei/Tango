@@ -36,4 +36,27 @@ describe('wordQueryKeys', () => {
       client.getQueryState(wordQueryKeys.detail('w_2'))?.isInvalidated,
     ).toBe(false)
   })
+
+  it('検索クエリが違う一覧は別cacheになる', () => {
+    const client = new QueryClient()
+    client.setQueryData(wordQueryKeys.lists(''), {
+      items: [],
+      nextCursor: null,
+    })
+    client.setQueryData(wordQueryKeys.lists('issue'), {
+      items: [],
+      nextCursor: null,
+    })
+
+    expect(wordQueryKeys.lists()).toEqual(wordQueryKeys.lists(''))
+    expect(wordQueryKeys.lists('issue')).not.toEqual(wordQueryKeys.lists(''))
+    expect(client.getQueryData(wordQueryKeys.lists('issue'))).toEqual({
+      items: [],
+      nextCursor: null,
+    })
+    expect(client.getQueryData(wordQueryKeys.lists())).toEqual({
+      items: [],
+      nextCursor: null,
+    })
+  })
 })

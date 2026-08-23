@@ -16,10 +16,15 @@ type WordListItem = WordListResponse['items'][number]
 export function WordList({ onSignOut }: { onSignOut: () => void }) {
   const queryClient = useQueryClient()
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [searchDraft, setSearchDraft] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const listQuery = useInfiniteQuery({
-    queryKey: wordQueryKeys.lists(),
+    queryKey: wordQueryKeys.lists(searchQuery),
     queryFn: async ({ pageParam }) => {
-      const result = await listWordsRequest({ cursor: pageParam })
+      const result = await listWordsRequest({
+        cursor: pageParam,
+        q: searchQuery,
+      })
       if (!result.ok) {
         throw new Error(result.message)
       }
@@ -57,6 +62,27 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
         </button>
       </p>
 
+      <form
+        className="word-search"
+        onSubmit={(event) => {
+          event.preventDefault()
+          setConfirmingId(null)
+          setSearchQuery(searchDraft.trim())
+        }}
+      >
+        <label htmlFor="word-search">単語を検索</label>
+        <input
+          id="word-search"
+          name="q"
+          type="search"
+          value={searchDraft}
+          maxLength={100}
+          autoComplete="off"
+          onChange={(event) => setSearchDraft(event.target.value)}
+        />
+        <button type="submit">検索</button>
+      </form>
+
       {listQuery.isPending ? <p>読み込み中…</p> : null}
       {listQuery.isError ? (
         <p role="alert">
@@ -69,7 +95,11 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
         </p>
       ) : null}
       {listQuery.isSuccess && items.length === 0 ? (
-        <p>まだ単語がありません。</p>
+        <p>
+          {searchQuery.length > 0
+            ? '一致する単語がありません。'
+            : 'まだ単語がありません。'}
+        </p>
       ) : null}
 
       {items.map((word) => (

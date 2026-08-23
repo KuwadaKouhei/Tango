@@ -88,6 +88,7 @@ export const createWordRoutes = () => {
       actorUserId: c.get('actorUserId'),
       cursor: parsed.data.cursor ?? null,
       limit: parsed.data.limit ?? null,
+      searchQuery: parsed.data.q ?? null,
       wordRepository: services.wordRepository,
     })
 

@@ -213,6 +213,7 @@ describe('list owned words', () => {
         ownerUserId: 'list-plan',
         cursor: { createdAt: 1, id: 'w_cursor' },
         limit: 20,
+        search: null,
       }).toSQL(),
     )
 
@@ -273,5 +274,74 @@ describe('list owned words', () => {
     })
 
     expect(page.items.map((word) => word.term)).toEqual(['mine'])
+  })
+
+  it('見出しの正規化部分一致で絞り込む', async () => {
+    await insertTestUser(env.DB, 'list-search-term')
+    await createOwnedWord('list-search-term', 'issue', ['問題'], 10)
+    await createOwnedWord('list-search-term', 'apple', ['りんご'], 11)
+
+    const services = createAppServices(env)
+    const page = await listOwnedWords({
+      actorUserId: 'list-search-term',
+      cursor: null,
+      limit: 20,
+      searchQuery: '  ISSUE  ',
+      wordRepository: services.wordRepository,
+    })
+
+    expect(page.items.map((word) => word.term)).toEqual(['issue'])
+  })
+
+  it('意味の正規化部分一致で絞り込む', async () => {
+    await insertTestUser(env.DB, 'list-search-meaning')
+    await createOwnedWord('list-search-meaning', 'issue', ['問題', '論点'], 20)
+    await createOwnedWord('list-search-meaning', 'apple', ['りんご'], 21)
+
+    const services = createAppServices(env)
+    const page = await listOwnedWords({
+      actorUserId: 'list-search-meaning',
+      cursor: null,
+      limit: 20,
+      searchQuery: '論点',
+      wordRepository: services.wordRepository,
+    })
+
+    expect(page.items.map((word) => word.term)).toEqual(['issue'])
+  })
+
+  it('LIKEメタ文字はワイルドカードにせず、他ユーザーはヒットしない', async () => {
+    await insertTestUser(env.DB, 'list-search-meta')
+    await insertTestUser(env.DB, 'list-search-other')
+    await createOwnedWord('list-search-meta', '100%', ['百分率'], 30)
+    await createOwnedWord('list-search-meta', 'apple', ['りんご'], 31)
+    await createOwnedWord('list-search-other', '100%', ['他人'], 32)
+
+    const services = createAppServices(env)
+    const page = await listOwnedWords({
+      actorUserId: 'list-search-meta',
+      cursor: null,
+      limit: 20,
+      searchQuery: '%',
+      wordRepository: services.wordRepository,
+    })
+
+    expect(page.items.map((word) => word.term)).toEqual(['100%'])
+  })
+
+  it('一致が無ければ空配列を返す', async () => {
+    await insertTestUser(env.DB, 'list-search-empty')
+    await createOwnedWord('list-search-empty', 'issue', ['問題'], 40)
+
+    const services = createAppServices(env)
+    const page = await listOwnedWords({
+      actorUserId: 'list-search-empty',
+      cursor: null,
+      limit: 20,
+      searchQuery: 'zzz-no-hit',
+      wordRepository: services.wordRepository,
+    })
+
+    expect(page).toEqual({ items: [], nextCursor: null })
   })
 })
