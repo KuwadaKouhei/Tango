@@ -231,7 +231,10 @@ describe('POST /api/v1/study/questions', () => {
       actorUserId: 'study-validate',
       body: {
         mode: 'random',
-        excludeWordIds: Array.from({ length: 501 }, (_, index) => `w_${String(index)}`),
+        excludeWordIds: Array.from(
+          { length: 501 },
+          (_, index) => `w_${String(index)}`,
+        ),
       },
     })
     expect(tooMany.status).toBe(422)

@@ -10,4 +10,5 @@ export const STUDY_LIMITS = {
 
 export type StudyMode = 'random' | 'weak'
 
-export type StudyCountChoice = (typeof STUDY_LIMITS.countChoices)[number] | 'all'
+export type StudyCountChoice =
+  (typeof STUDY_LIMITS.countChoices)[number] | 'all'

@@ -7,7 +7,10 @@ import {
 } from '../domain/question-selector'
 import { STUDY_LIMITS } from '../domain/study-limits'
 import type { StudyMode } from '../domain/study-limits'
-import type { NextStudyQuestion, StudyCandidate } from '../domain/study-question'
+import type {
+  NextStudyQuestion,
+  StudyCandidate,
+} from '../domain/study-question'
 
 export const selectNextQuestion = async (input: {
   actorUserId: string

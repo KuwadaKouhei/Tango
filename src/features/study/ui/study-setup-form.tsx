@@ -6,7 +6,9 @@ import type { StudyCountChoice, StudyMode } from '../domain/study-limits'
 export function StudySetupForm() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<StudyMode>('random')
-  const [count, setCount] = useState<StudyCountChoice>(STUDY_LIMITS.defaultCount)
+  const [count, setCount] = useState<StudyCountChoice>(
+    STUDY_LIMITS.defaultCount,
+  )
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   return (
@@ -15,7 +17,9 @@ export function StudySetupForm() {
       onSubmit={(event) => {
         event.preventDefault()
         if (mode === 'weak') {
-          setErrorMessage('苦手優先はまだ利用できません。完全ランダムを選んでください。')
+          setErrorMessage(
+            '苦手優先はまだ利用できません。完全ランダムを選んでください。',
+          )
           return
         }
 
@@ -27,7 +31,9 @@ export function StudySetupForm() {
       }}
     >
       <h1>テストを始める</h1>
-      <p>出題方法と件数を選んでください。同じテストの中で同じ単語は繰り返し出ません。</p>
+      <p>
+        出題方法と件数を選んでください。同じテストの中で同じ単語は繰り返し出ません。
+      </p>
 
       {errorMessage ? <p role="alert">{errorMessage}</p> : null}
 

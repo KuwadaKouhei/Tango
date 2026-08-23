@@ -39,7 +39,11 @@ describe('selectRandomCandidate', () => {
 
   it('unit が1に近いときは末尾を返す', () => {
     expect(
-      selectRandomCandidate(candidates, toExcludedWordIdSet([]), randomOf(0.999)),
+      selectRandomCandidate(
+        candidates,
+        toExcludedWordIdSet([]),
+        randomOf(0.999),
+      ),
     ).toEqual(candidates[2])
   })
 

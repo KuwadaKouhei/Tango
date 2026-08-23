@@ -14,10 +14,7 @@ export type StudySessionSearch = {
 
 type SessionStatus = 'loading' | 'empty' | 'question' | 'finished' | 'error'
 
-export function StudySession({
-  mode,
-  count,
-}: StudySessionSearch) {
+export function StudySession({ mode, count }: StudySessionSearch) {
   const [status, setStatus] = useState<SessionStatus>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [ownedWordCount, setOwnedWordCount] = useState(0)
@@ -67,9 +64,7 @@ export function StudySession({
 
   useEffect(() => {
     void loadQuestion([])
-    // 初回だけ。mode/count は URL の開始条件。
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- セッション開始時の1回だけ取る
-  }, [])
+  }, [mode, count])
 
   const showNext = () => {
     if (!question) {
@@ -146,7 +141,10 @@ export function StudySession({
 
       {status === 'error' ? (
         <p>
-          <button type="button" onClick={() => void loadQuestion(excludeWordIds)}>
+          <button
+            type="button"
+            onClick={() => void loadQuestion(excludeWordIds)}
+          >
             再試行
           </button>
           {' / '}
@@ -196,7 +194,9 @@ export function StudySession({
               }}
             />
           </p>
-          <p>回答の正誤判定は次の更新で追加します。今は出題とヒントを確認できます。</p>
+          <p>
+            回答の正誤判定は次の更新で追加します。今は出題とヒントを確認できます。
+          </p>
           <p>
             <button type="button" onClick={showNext}>
               {shownCount >= plannedCount ? '終了する' : '次の問題'}
