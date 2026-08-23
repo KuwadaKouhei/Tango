@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { requestTranslationCandidates } from '../../translation/public'
 import { applyTranslationCandidate } from './apply-translation-candidate'
+import { removeMeaningDraft } from './remove-meaning-draft'
 import { INPUT_LIMITS } from '../domain/input-limits'
 
 export type MeaningDraft = {
@@ -146,11 +147,8 @@ export function WordFields({
             <button
               type="button"
               onClick={() =>
-                onMeaningsChange(
-                  meanings.filter((item) => item.key !== meaning.key),
-                )
+                onMeaningsChange(removeMeaningDraft(meanings, meaning.key))
               }
-              disabled={meanings.length <= 1}
             >
               削除
             </button>

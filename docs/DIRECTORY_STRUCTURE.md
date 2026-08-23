@@ -75,6 +75,7 @@ Tango/
 │   │   │   │   ├── word-create-form.tsx
 │   │   │   │   ├── word-fields.tsx
 │   │   │   │   ├── apply-translation-candidate.ts
+│   │   │   │   ├── remove-meaning-draft.ts
 │   │   │   │   ├── word-edit-form.tsx
 │   │   │   │   ├── word-detail-request.ts
 │   │   │   │   ├── word-query-keys.ts
@@ -330,3 +331,4 @@ composition-root -> application + infrastructure
 - 2026-08-22 T16で word-duplicate-api.test.ts を追加
 - 2026-08-22 T07で word-delete-api.test.ts を追加
 - 2026-08-22 T08で translation feature、Workers AI adapter、fetch-jsonのplatform昇格、contract testを追加
+- 2026-08-23 意味欄の最後1件削除で中身だけ空にする `remove-meaning-draft.ts` を追加
