@@ -142,7 +142,9 @@ describe('GET /api/v1/words', () => {
     expect(byTerm.items.map((item) => item.term)).toEqual(['issue'])
 
     const byMeaning = wordListResponseSchema.parse(
-      await (await callList('api-search', `?q=${encodeURIComponent('論点')}`)).json(),
+      await (
+        await callList('api-search', `?q=${encodeURIComponent('論点')}`)
+      ).json(),
     )
     expect(byMeaning.items.map((item) => item.term)).toEqual(['issue'])
   })

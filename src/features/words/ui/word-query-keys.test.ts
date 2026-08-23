@@ -39,7 +39,10 @@ describe('wordQueryKeys', () => {
 
   it('検索クエリが違う一覧は別cacheになる', () => {
     const client = new QueryClient()
-    client.setQueryData(wordQueryKeys.lists(''), { items: [], nextCursor: null })
+    client.setQueryData(wordQueryKeys.lists(''), {
+      items: [],
+      nextCursor: null,
+    })
     client.setQueryData(wordQueryKeys.lists('issue'), {
       items: [],
       nextCursor: null,

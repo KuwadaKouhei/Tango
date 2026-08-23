@@ -13,7 +13,7 @@ export type ListWordsQuery = {
   ownerUserId: UserId
   cursor: WordListCursor | null
   limit: number
-  search: WordListSearchNeedles | null
+  search?: WordListSearchNeedles | null
 }
 
 export type WordRepository = {
