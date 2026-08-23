@@ -278,16 +278,16 @@ GROUP BY word_id;
 
 ```sql
 AND (
-  w.normalized_term LIKE ? ESCAPE '\'
+  w.normalized_term LIKE ? ESCAPE '!'
   OR EXISTS (
     SELECT 1 FROM word_meanings m
     WHERE m.word_id = w.id
-      AND m.normalized_meaning LIKE ? ESCAPE '\'
+      AND m.normalized_meaning LIKE ? ESCAPE '!'
   )
 )
 ```
 
-先頭 `%` のため `normalized_term` のUNIQUE indexは部分一致では使えない。個人MVPでは許容し、FTSはOQ-012で必要になってから検討する。LIKEの `%` `_` はbind前にエスケープする。
+先頭 `%` のため `normalized_term` のUNIQUE indexは部分一致では使えない。個人MVPでは許容し、FTSはOQ-012で必要になってから検討する。LIKEの `%` `_` `!` はbind前に `!` でエスケープする。
 
 ### 6.2 苦手優先
 
@@ -434,3 +434,4 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 - 2026-08-22 T16で `0002_boring_kabuki` を追加し `UNIQUE(user_id, normalized_term)` を適用。`words`はDrizzleがUNIQUE indexを出すためテーブル再作成にならない旨へ9.1を訂正し、rollback SQLを追加
 - 2026-08-22 T07で `0003_clean_the_executioner` を追加し `test_results` のFKをCASCADEへ。単体 `word_id` FKもCASCADEにしないとNO ACTION側が削除を止めることを明記
 - 2026-08-23 OQ-004/006/010決定。保存用正規化は現状維持。判定追加正規化は非保存。苦手重み式と検索LIKEを記載。`test_sessions` は作らない
+- 2026-08-23 T18で検索LIKEのESCAPEを `!` に確定

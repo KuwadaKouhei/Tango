@@ -119,6 +119,55 @@ describe('GET /api/v1/words', () => {
     expect(second.items[0]?.id).not.toBe(first.items[0]?.id)
   })
 
+  it('qで見出しまたは意味の部分一致に絞る', async () => {
+    await insertTestUser(env.DB, 'api-search')
+    await seedWord({
+      actorUserId: 'api-search',
+      term: 'issue',
+      meanings: ['問題', '論点'],
+      hint: null,
+      nowEpochMs: 1_700_000_200_000,
+    })
+    await seedWord({
+      actorUserId: 'api-search',
+      term: 'apple',
+      meanings: ['りんご'],
+      hint: null,
+      nowEpochMs: 1_700_000_200_001,
+    })
+
+    const byTerm = wordListResponseSchema.parse(
+      await (await callList('api-search', '?q=ISSUE')).json(),
+    )
+    expect(byTerm.items.map((item) => item.term)).toEqual(['issue'])
+
+    const byMeaning = wordListResponseSchema.parse(
+      await (await callList('api-search', `?q=${encodeURIComponent('論点')}`)).json(),
+    )
+    expect(byMeaning.items.map((item) => item.term)).toEqual(['issue'])
+  })
+
+  it('空のqは通常一覧で、一致なしは空配列', async () => {
+    await insertTestUser(env.DB, 'api-search-empty')
+    await seedWord({
+      actorUserId: 'api-search-empty',
+      term: 'issue',
+      meanings: ['問題'],
+      hint: null,
+      nowEpochMs: 1_700_000_200_100,
+    })
+
+    const all = wordListResponseSchema.parse(
+      await (await callList('api-search-empty', '?q=%20%20')).json(),
+    )
+    expect(all.items).toHaveLength(1)
+
+    const none = wordListResponseSchema.parse(
+      await (await callList('api-search-empty', '?q=no-such-word')).json(),
+    )
+    expect(none).toEqual({ items: [], nextCursor: null })
+  })
+
   it.each([
     ['数値でないlimit', '?limit=abc'],
     ['0以下のlimit', '?limit=0'],
@@ -126,6 +175,7 @@ describe('GET /api/v1/words', () => {
     ['小数のlimit', '?limit=1.5'],
     ['壊れたcursor', '?cursor=%25%25%25'],
     ['未知のquery param', '?limmit=20'],
+    ['長すぎるq', `?q=${'a'.repeat(101)}`],
   ])('%sは422で拒否する', async (_label, query) => {
     const response = await callList('api-invalid', query)
     const body: unknown = await response.json()

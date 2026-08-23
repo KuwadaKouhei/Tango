@@ -2,6 +2,15 @@ import { z } from 'zod'
 import { INPUT_LIMITS } from '../domain/input-limits'
 import { WORD_LIST_PAGE } from '../domain/word-list-page'
 
+const optionalSearchQuerySchema = z.preprocess((value: unknown) => {
+  if (typeof value !== 'string') {
+    return value
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length === 0 ? undefined : trimmed
+}, z.string().min(1).max(INPUT_LIMITS.termMaxChars).optional())
+
 export const upsertWordBodySchema = z
   .object({
     term: z.string().max(INPUT_LIMITS.termMaxChars),
@@ -55,6 +64,7 @@ export const listWordsQuerySchema = z
       .min(1)
       .max(WORD_LIST_PAGE.maxLimit)
       .optional(),
+    q: optionalSearchQuerySchema,
   })
   .strict()
 

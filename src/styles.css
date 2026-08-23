@@ -36,3 +36,16 @@ legend {
 .word-card-stats {
   font-weight: 600;
 }
+
+.word-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0 0 1rem;
+  max-width: 40rem;
+}
+
+.word-search input {
+  flex: 1 1 12rem;
+}

@@ -62,6 +62,8 @@ Tango/
 │   │   │   │   ├── word-stats.ts
 │   │   │   │   ├── word-list-page.ts
 │   │   │   │   ├── word-list-cursor.ts
+│   │   │   │   ├── word-list-search.ts
+│   │   │   │   ├── escape-like-pattern.ts
 │   │   │   │   ├── word.ts
 │   │   │   │   └── word-repository.ts
 │   │   │   ├── application/
@@ -336,3 +338,4 @@ composition-root -> application + infrastructure
 - 2026-08-22 T08で translation feature、Workers AI adapter、fetch-jsonのplatform昇格、contract testを追加
 - 2026-08-23 T17で翻訳adapterを deepl-translation-service へ差し替え
 - 2026-08-23 OQ-005/010決定。終了画面はsession tableなし、検索はwords featureへ足す。T10で判定用normalizeをstudy domainへ置く
+- 2026-08-23 T18で word-list-search と escape-like-pattern を追加

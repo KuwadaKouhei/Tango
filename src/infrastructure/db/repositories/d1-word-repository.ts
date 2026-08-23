@@ -1,5 +1,9 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, or, sql } from 'drizzle-orm'
 import { encodeWordListCursor } from '../../../features/words/domain/word-list-cursor'
+import {
+  LIKE_ESCAPE_CHAR,
+  escapeLikePattern,
+} from '../../../features/words/domain/escape-like-pattern'
 import type {
   ListWordsQuery,
   WordRepository,
@@ -60,6 +64,42 @@ const chunk = <T>(items: T[], size: number): T[][] => {
  * GROUP BYとORDER BYを同じqueryへ混ぜるとSQLiteが一時B-treeで並べ直し、
  * idx_words_user_created の走査順をそのまま使えなくなるため。
  */
+const likeLiteral = (
+  column: typeof words.normalizedTerm | typeof wordMeanings.normalizedMeaning,
+  needle: string,
+) =>
+  sql`${column} like ${`%${escapeLikePattern(needle)}%`} ${sql.raw(`escape '${LIKE_ESCAPE_CHAR}'`)}`
+
+const buildSearchFilter = (db: AppDb, input: ListWordsQuery) => {
+  if (!input.search) {
+    return undefined
+  }
+
+  const termHit =
+    input.search.termNeedle.length === 0
+      ? undefined
+      : likeLiteral(words.normalizedTerm, input.search.termNeedle)
+  const meaningHit =
+    input.search.meaningNeedle.length === 0
+      ? undefined
+      : exists(
+          db
+            .select({ marker: sql`1` })
+            .from(wordMeanings)
+            .where(
+              and(
+                eq(wordMeanings.wordId, words.id),
+                likeLiteral(
+                  wordMeanings.normalizedMeaning,
+                  input.search.meaningNeedle,
+                ),
+              ),
+            ),
+        )
+
+  return or(termHit, meaningHit)
+}
+
 export const buildOwnedWordsPageQuery = (db: AppDb, input: ListWordsQuery) => {
   const cursorFilter = input.cursor
     ? sql`(${words.createdAt}, ${words.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`
@@ -76,7 +116,13 @@ export const buildOwnedWordsPageQuery = (db: AppDb, input: ListWordsQuery) => {
       updatedAt: words.updatedAt,
     })
     .from(words)
-    .where(and(eq(words.userId, input.ownerUserId), cursorFilter))
+    .where(
+      and(
+        eq(words.userId, input.ownerUserId),
+        cursorFilter,
+        buildSearchFilter(db, input),
+      ),
+    )
     .orderBy(desc(words.createdAt), desc(words.id))
     .limit(input.limit + 1)
 }

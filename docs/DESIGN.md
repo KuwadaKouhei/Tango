@@ -263,7 +263,7 @@ DELETE /api/v1/words/:wordId
 GET /api/v1/words?limit=20&cursor=opaque&q=
 ```
 
-`q` は任意。trim後0文字または未指定は通常一覧。trim後1〜100文字。`normalizeTerm(q)` が `words.normalized_term` に部分一致するか、`normalizeMeaning(q)` がいずれかの `word_meanings.normalized_meaning` に部分一致すればヒットする。所有者scope必須。他ユーザーはヒットしない。`%` `_` は LIKE のメタ文字としてエスケープする。空結果は `items: []`。
+`q` は任意。trim後0文字または未指定は通常一覧。trim後1〜100文字。`normalizeTerm(q)` が `words.normalized_term` に部分一致するか、`normalizeMeaning(q)` がいずれかの `word_meanings.normalized_meaning` に部分一致すればヒットする。所有者scope必須。他ユーザーはヒットしない。LIKEの `%` `_` `!` は `!` でエスケープする。空結果は `items: []`。
 
 `limit`未指定は20。上限100はOQ-012未決のため防御値。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
 
@@ -577,3 +577,4 @@ T17時点の意図的な限定:
 - 2026-08-22 T08で翻訳候補APIとWorkers AI adapterを実装。OQ-001/015の決定を反映。逸脱節をT08時点へ更新
 - 2026-08-23 T17で翻訳adapterをDeepL API Freeへ差し替え。OQ-001再決定。逸脱節をT17時点へ更新
 - 2026-08-23 OQ-002/003/004/005/006/007/010決定。出題・判定正規化・苦手重み・AI障害・検索・終了結果・カード色を設計へ反映。`test_sessions` は作らない
+- 2026-08-23 T18で一覧検索 `q` を実装。LIKE は `ESCAPE '!'`
