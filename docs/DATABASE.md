@@ -16,6 +16,7 @@
 - 全所有データqueryに`user_id`を含める。
 - 統計は`test_results`から算出し、初期schemaに集計cacheを持たない。
 - 単語削除はOQ-009の決定どおり `test_results` を `ON DELETE CASCADE` にする。公開DELETEは所有者scopeで、非所有は404とする。
+- テストセッションテーブルは作らない（OQ-005/010）。終了結果はクライアントの今回状態から出す。
 
 ## 2. ER図
 
@@ -177,7 +178,7 @@ indexes:
 | `id` | `text` | No | PK | meaning ID |
 | `word_id` | `text` | No | FK → `words.id` ON DELETE CASCADE | 親単語 |
 | `meaning` | `text` | No | CHECK trim後長さ > 0 | 表示用原文 |
-| `normalized_meaning` | `text` | No | CHECK length > 0 | exact後のnormalized比較値 |
+| `normalized_meaning` | `text` | No | CHECK length > 0 | 保存・検索用。判定の追加正規化は含めない |
 | `sort_order` | `integer` | No | CHECK `sort_order >= 0` | 0始まりの表示順 |
 | `created_at` | `integer` | No | epoch ms | 作成日時 |
 | `updated_at` | `integer` | No | epoch ms | 更新日時 |
@@ -239,9 +240,10 @@ indexes:
 ### 5.2 意図的な重複
 
 - `test_results.user_id`は`word_id`から導出可能だが、要件で履歴にuser IDが必要であり、owner scope queryと将来の保持方針を安全にするため保持する。
-- `normalized_term` / `normalized_meaning`は原文から導出可能だが、検索・比較の一貫性と将来の重複照合のため保存する。
-- 正規化algorithmを変更する場合はversion差を放置せず、全行再計算migrationまたはversion column追加を設計する。
-- OQ-008で `normalized_term` にUNIQUEが付くため、この再計算は**衝突しうる**。正規化を広げると、いま別行の2語が同じ正規形になりUNIQUE違反でmigrationが失敗する。OQ-004（正規化の追加範囲）を決めるときは、再計算・衝突検出・衝突行の解消手順を同じ設計に含める。
+- `normalized_term` / `normalized_meaning`は原文から導出可能だが、検索・比較の一貫性と重複照合のため保存する。保存用は必須正規化のみ（NFKC、trim、小文字、空白畳み込み）。
+- 判定用の追加正規化（かなカナ統一、句読点・記号除去）は **保存しない**。T10の `normalizeForJudgement` が回答原文と意味原文へ適用する（OQ-004）。
+- 保存用algorithmを変更する場合はversion差を放置せず、全行再計算migrationまたはversion column追加を設計する。
+- `normalized_term` のUNIQUEがあるため、保存用正規化を広げると衝突しうる。OQ-004は保存用を広げないため、再計算と衝突解消migrationは不要。
 
 ## 6. インデックス設計とquery
 
@@ -272,9 +274,31 @@ GROUP BY word_id;
 - 統計行が無いwordは未回答（`total = 0`）として扱う。1のページ確定はLEFT JOINを持たないので、統計の有無でページ内容が変わらない。
 - 1と3の`EXPLAIN QUERY PLAN`は、Drizzleが生成したSQLそのものに対して `tests/integration/list-words.test.ts` で検証する。手書きSQLは実装とずれるので使わない。表明は「想定indexを使う」と「`TEMP B-TREE`を作らない」の2点。
 
+`q` があるとき、ページ確定SQLは所有ユーザーに加え次を満たすwordに絞る（OQ-010、T18）。
+
+```sql
+AND (
+  w.normalized_term LIKE ? ESCAPE '\'
+  OR EXISTS (
+    SELECT 1 FROM word_meanings m
+    WHERE m.word_id = w.id
+      AND m.normalized_meaning LIKE ? ESCAPE '\'
+  )
+)
+```
+
+先頭 `%` のため `normalized_term` のUNIQUE indexは部分一致では使えない。個人MVPでは許容し、FTSはOQ-012で必要になってから検討する。LIKEの `%` `_` はbind前にエスケープする。
+
 ### 6.2 苦手優先
 
-所有ユーザーのwordごとに`total`と`correct`を集計し、applicationの`WeaknessWeightPolicy`で正の重みを算出する。OQ-006で式を決定するまでSQLへ埋め込まない。
+所有ユーザーのwordごとに`total`と`correct`を集計し、applicationの`WeaknessWeightPolicy`で正の重みを算出する（OQ-006）。
+
+```text
+accuracy = total == 0 ? 0 : correct / total
+weight  = max(1 - accuracy, 0.05)
+```
+
+SQLへ重み式を埋め込まない。回答回数と直近正誤の列は重みに使わない。同一テスト内の除外は `excludeWordIds` を集計後の抽選候補から外す。
 
 ### 6.3 cursor
 
@@ -385,9 +409,10 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 | WORD-006 | `words`の`UNIQUE(user_id, normalized_term)`。application事前照合とUNIQUE違反の409変換 |
 | WORD-007 | `test_results`の複合FK `ON DELETE CASCADE`、`word_meanings`のCASCADE |
 | HINT-001/003 | words.hint、test_results.hint_used |
-| JUDGE-002〜004 | normalized_meaning、judge_type、AI metadata |
+| WORD-008 | 一覧の `q` は `normalized_term` / `normalized_meaning` の部分一致。新テーブルなし |
+| JUDGE-002〜004 | 保存用 normalized_meaning、判定時 `normalizeForJudgement`、judge_type、AI metadata |
 | JUDGE-005 | acceptable_answers tableなし、accepted値なし |
-| HISTORY-001 | test_resultsの必須列 |
+| TEST-006 | 新テーブルなし。終了結果は `test_results` とクライアントの今回状態 |
 | HISTORY-002 | test_results集計、0件はLEFT JOINで識別 |
 
 ## 11. 参照
@@ -408,3 +433,4 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 - 2026-08-22 OQ-008/009を決定。`words`へ`UNIQUE(user_id, normalized_term)`、`test_results`のFKをCASCADEへ変更する方針を記載。migrationは未適用でT07以降に実施
 - 2026-08-22 T16で `0002_boring_kabuki` を追加し `UNIQUE(user_id, normalized_term)` を適用。`words`はDrizzleがUNIQUE indexを出すためテーブル再作成にならない旨へ9.1を訂正し、rollback SQLを追加
 - 2026-08-22 T07で `0003_clean_the_executioner` を追加し `test_results` のFKをCASCADEへ。単体 `word_id` FKもCASCADEにしないとNO ACTION側が削除を止めることを明記
+- 2026-08-23 OQ-004/006/010決定。保存用正規化は現状維持。判定追加正規化は非保存。苦手重み式と検索LIKEを記載。`test_sessions` は作らない

@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T08マージ済み。T17 PR中（feature/T17-deepl-translation）。人間review/merge後に次タスクへ進む。**
+> 状態: **T17マージ済み。OQ-002〜007,010決定済み。次はT18（単語検索）。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -27,14 +27,15 @@
 | T16 | 単語の重複登録禁止 | AC-012 | T04,T06 | OQ-008（決定済み） | `feature/T16-word-duplicate` | ✅マージ済み |
 | T07 | 単語削除 | AC-003,013 | T06 | OQ-009（決定済み） | `feature/T07-word-delete` | ✅マージ済み |
 | T08 | 翻訳候補による登録補助 | AC-004 | T04 | OQ-001,015（決定済み） | `feature/T08-translation` | ✅マージ済み |
-| T17 | 翻訳providerをDeepLへ切り替え | AC-004 | T08 | OQ-001再決定 | `feature/T17-deepl-translation` | 🟡PR中 |
-| T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | **OQ-005必須** | `feature/T09-random-study` | ⬜未着手 |
-| T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | **OQ-004,018必須** | `feature/T10-local-judgement` | ⬜未着手 |
-| T11 | 苦手優先出題 | AC-005 | T10 | **OQ-006,012必須** | `feature/T11-weak-study` | ⬜未着手 |
-| T12 | AI意味判定fallback | AC-008,009 | T10 | **OQ-002,003,015必須** | `feature/T12-ai-judgement` | ⬜未着手 |
-| T13 | 回答結果表示と次問題への遷移 | AC-005〜009 | T09,T10,T12 | OQ-005 | `feature/T13-answer-result` | ⬜未着手 |
-| T14 | 正解率カード色とアクセシビリティ | AC-010,011 | T10,T11 | **OQ-007必須** | `feature/T14-mastery-visuals` | ⬜未着手 |
-| T15 | CI・E2E・preview release gate | AC-001〜011 | T02〜T14 | OQ-012,017 | `feature/T15-release-gate` | ⬜未着手 |
+| T17 | 翻訳providerをDeepLへ切り替え | AC-004 | T08 | OQ-001再決定 | `feature/T17-deepl-translation` | ✅マージ済み |
+| T18 | 単語一覧の検索 | AC-014 | T05 | OQ-010（決定済み） | `feature/T18-word-search` | ⬜未着手 |
+| T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | OQ-005（決定済み） | `feature/T09-random-study` | ⬜未着手 |
+| T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | OQ-004,018（決定済み） | `feature/T10-local-judgement` | ⬜未着手 |
+| T11 | 苦手優先出題 | AC-005 | T10 | OQ-006（決定済み）。OQ-012は個人規模で計測 | `feature/T11-weak-study` | ⬜未着手 |
+| T12 | AI意味判定fallback | AC-008,009 | T10 | OQ-002,003,015（決定済み）。model IDはPOC-05 | `feature/T12-ai-judgement` | ⬜未着手 |
+| T13 | 回答結果・次問題・テスト終了 | AC-005〜009,015 | T09,T10,T12 | OQ-005,010（決定済み） | `feature/T13-answer-result` | ⬜未着手 |
+| T14 | 正解率カード色とアクセシビリティ | AC-010,011 | T10,T11 | OQ-007（決定済み） | `feature/T14-mastery-visuals` | ⬜未着手 |
+| T15 | CI・E2E・preview release gate | AC-001〜015 | T02〜T14,T18 | OQ-012,017 | `feature/T15-release-gate` | ⬜未着手 |
 
 ## 3. タスク詳細
 
@@ -178,18 +179,33 @@
 
 必須検証: AC-004、DeepL contract（成功/502/503/429/456）、auth header、DB未更新。
 
-### T09 テスト設定・ランダム出題・ヒント表示
+### T18 単語一覧の検索
 
-概要: mode設定画面とrandom問題取得、条件付きhint取得を実装する。
+概要: 所有単語一覧を見出しまたは意味の部分一致で絞り込む。
 
 完了条件:
 
-- random/weakの選択UIを表示し、randomで所有wordを出題する。
-- OQ-005に従い件数・重複を扱う。
-- hint無しはbutton無し、hint有りも押すまで本文を返さない/表示しない。
-- 0 word時のempty stateを表示する。
+- `GET /api/v1/words` に任意 query `q`（trim後1〜100文字）を追加する。
+- `normalizeTerm(q)` が `normalized_term`、または `normalizeMeaning(q)` がいずれかの `normalized_meaning` に部分一致したらヒットする。
+- 未指定/空は既存一覧。ヒット0件は空配列。他ユーザーは出ない。
+- LIKEの `%` `_` をエスケープする。新テーブル・FTSは作らない。
+- 一覧UIに検索欄を置き、検索中もcursorページングと統計表示を維持する。
 
-必須検証: AC-005/006、他ユーザー問題除外、hint条件、二重要求。
+必須検証: AC-014、所有者分離、空クエリ、メタ文字、意味ヒット。
+
+### T09 テスト設定・ランダム出題・ヒント表示
+
+概要: modeと出題数の設定画面、random問題取得、条件付きhint取得を実装する。
+
+完了条件:
+
+- random/weak と出題数 5/10/20/全部（既定10）の選択UIを表示し、randomで所有wordを出題する。
+- `excludeWordIds` で同一テスト内の重複を防ぐ。単語不足なら全件で終了する。
+- 問題番号 / 今回の出題数を表示する。
+- hint無しはbutton無し、hint有りも押すまで本文を返さない/表示しない。
+- 0 word時のempty stateを表示する。weakの抽選本体はT11。
+
+必須検証: AC-005/006、他ユーザー問題除外、hint条件、重複なし、件数不足。
 
 ### T10 exact/normalized判定と履歴保存
 
@@ -197,25 +213,26 @@
 
 完了条件:
 
-- exact一致で`exact`、必須正規化一致で`normalized`となる。
+- exact一致で`exact`、`normalizeForJudgement` 一致で`normalized`となる（OQ-004）。
+- 保存用 `normalizeTerm` / `normalizeMeaning` は変えない。UNIQUE再計算をしない。
 - 複数意味のどれに一致しても正解。
 - このタスクでは不一致をAIへ送らず、T12用port呼び出し点を用意する。
 - answer/isCorrect/judgeType/hintUsed/timeを所有者履歴へ保存する。
 - 回答送信の二重送信をUIで防ぐ。
 
-必須検証: AC-007/009、正規化冪等性、AI mock呼び出し0回、0%統計。
+必須検証: AC-007/009、正規化冪等性、句読点・かなカナ、長音は不一致、AI mock呼び出し0回、0%統計。
 
 ### T11 苦手優先出題
 
-概要: OQ-006で決めた正の重みに基づく出題strategyを実装する。
+概要: OQ-006の正の重みに基づく出題strategyを実装する。
 
 完了条件:
 
+- `weight = max(1 - accuracy, 0.05)`。未回答は accuracy 0。
 - 低正解率ほど統計的に高頻度となる固定seed testを用意する。
-- 全wordのweightが0より大きい。
-- 未回答、回答回数、直近結果を決定どおり扱う。
-- random modeの挙動を変えない。
-- 想定最大件数でquery/抽選時間を計測する。
+- 全wordのweightが0より大きい。回答回数と直近正誤は見ない。
+- 同一テスト内は除外済みを除いて抽選する。random modeの挙動を変えない。
+- 個人規模でのquery/抽選時間を計測して記録する。OQ-012のSLO固定はしない。
 
 必須検証: AC-005、weight property、所有者分離、性能記録。
 
@@ -225,26 +242,28 @@
 
 完了条件:
 
-- POC-05評価とOQ-002/003を決定する。
-- exact/normalized時はAI 0回、不一致時だけ最大1回。
+- 提供者はWorkers AI（OQ-002）。POC-05の固定評価セットで model ID をlockする。
+- exact/normalized時はAI 0回、不一致時だけ最大1回。timeout 8秒、自動retryなし、10回/60秒。
 - provider responseをZod検証し、model/prompt versionをAI結果へ保存する。
-- timeout/429/5xx/schema不正を決定したUX・保存方針で扱う。
-- AI利用を結果画面で明示する。
+- timeout/429/5xx/schema不正は履歴非保存の `503 AI_JUDGE_UNAVAILABLE`（OQ-003）。
+- AI利用を結果画面で明示する。通常CIは live call しない。
 
 必須検証: AC-008/009、固定評価セット、contract test、rate limit、秘密/本文logなし。
 
-### T13 回答結果表示と次問題への遷移
+### T13 回答結果・次問題・テスト終了
 
-概要: 判定結果の全必須情報を表示し、次の問題へ安全に進む。
+概要: 判定結果の全必須情報を表示し、次の問題または終了結果へ進む。
 
 完了条件:
 
 - 正誤、回答、全登録意味、judge type、AI利用有無を表示する。
-- loading中の再送信を拒否し、失敗は同一回答を安全に再試行できる。
-- 次問題の重複・終了条件はOQ-005どおり。
+- loading中の再送信を拒否し、失敗（AI 503を含む）は同一回答を安全に再試行できる。
+- 次問題は `excludeWordIds` と `plannedCount` に従う。尽きたら終了画面へ。
+- 終了画面は出題数・正解数・今回の正解率・各問の正誤と一覧へ戻る。再テスト操作は付けない。
+- `test_sessions` は作らない。
 - keyboard操作とscreen reader向けresult announcementを用意する。
 
-必須検証: AC-005〜009、連打、error→retry、keyboard。
+必須検証: AC-005〜009,015、連打、error→retry、終了結果、keyboard。
 
 ### T14 正解率カード色とアクセシビリティ
 
@@ -252,10 +271,10 @@
 
 完了条件:
 
-- OQ-007で色空間、端点、contrast基準を決める。
-- 未回答は白、0%回答済みは赤系で異なる文字label。
-- 0〜100%を連続補間し、必ず数値と正解数/回答数を併記する。
-- responsive幅、keyboard focus、contrastを検証する。
+- 未回答は `#ffffff`。0% は `hsl(0 70% 88%)`、100% は `hsl(95 55% 82%)`。間は H/S/L 線形補間（OQ-007）。
+- 0%回答済みは未回答と異なる文字label。
+- 必ず数値と正解数/回答数を併記する。
+- カード上の本文コントラストは WCAG 2.2 AA。responsive幅、keyboard focusを検証する。
 
 必須検証: AC-010/011、null/0/0.5/1、色以外の識別、visual check。
 
@@ -266,13 +285,13 @@
 完了条件:
 
 - GitHub Actionsでfrozen install、format、lint、typecheck、unit/integration、buildを必須化する。
-- AC-001〜011のtraceability表をPRまたはtest reportで埋める。
-- 登録→テスト→統計のPlaywright E2Eを通す。外部Google/AIは安定したtest境界を使う。
+- AC-001〜015のtraceability表をPRまたはtest reportで埋める。
+- 登録→検索→テスト→終了結果→統計のPlaywright E2Eを通す。外部Google/AIは安定したtest境界を使う。
 - previewに同じmigration/configでdeployし、manual smoke testを記録する。
 - secret、料金上限、log、rollback、OQ-012の性能目標を確認する。
 - Blocker 0、最終変更後の全gate成功をrelease条件にする。
 
-必須検証: AC-001〜011、Workers preview、migration rehearsal、security/quality review。
+必須検証: AC-001〜015、Workers preview、migration rehearsal、security/quality review。
 
 ## 4. 受け入れ条件の網羅
 
@@ -284,25 +303,28 @@
 | AC-012 | T16 | T15 integration |
 | AC-013 | T07 | T15 E2E |
 | AC-004 | T08, T17 | T15 E2E/contract |
+| AC-014 | T18 | T15 E2E/integration |
 | AC-005 | T09,T11,T13 | T15 E2E |
 | AC-006 | T04,T09 | T15 E2E |
 | AC-007 | T10 | T15 integration |
 | AC-008 | T12,T13 | T15 integration/E2E |
 | AC-009 | T03,T10,T12 | T15 D1 integration |
+| AC-015 | T13 | T15 E2E |
 | AC-010 | T05,T14 | T15 E2E |
 | AC-011 | T14 | T15 accessibility/visual check |
 
 ## 5. 並行可能性
 
 - T08はT04完了後、T05〜T07と並行開発できる。ただし同時merge時は最新mainへrebaseし全gateを再実行する。
+- T18はT05完了後、T09と並行できる。1人運用では表の順序（T18→T09）を既定とする。
 - T11はT10後、T12と並行できる。
 - 1人運用では並行branchを増やさず、表の順序を既定とする。
 
 ## 6. MVP外タスク
 
-OQ-010の検索、重複警告、終了結果、間違い再テスト、AI手動修正は未採用であり、本表へ含めない。採用時はREQUIREMENTS/DESIGN/DATABASEを先に更新して新IDを追加する。
+OQ-010のうち重複誘導UI、間違い再テスト、AI手動修正は未採用であり、本表へ含めない。採用時はREQUIREMENTS/DESIGN/DATABASEを先に更新して新IDを追加する。
 
-T16の重複禁止はOQ-010の「重複警告」とは別物である。T16は保存を拒否するだけで、既存単語の編集画面へ誘導するUIは作らない。
+検索はT18、終了結果はT13に含める。T16の重複禁止は「重複警告・編集誘導」とは別物である。T16は保存を拒否するだけで、既存単語の編集画面へ誘導するUIは作らない。
 
 ## 7. 更新履歴
 
@@ -322,3 +344,4 @@ T16の重複禁止はOQ-010の「重複警告」とは別物である。T16は�
 - 2026-08-22 T07をPR中へ更新。`0003_clean_the_executioner` で CASCADE を適用し公開DELETEを出した
 - 2026-08-22 T07をマージ済み、T08をPR中へ更新。OQ-001/015を決定済みとして翻訳候補を実装
 - 2026-08-22 T08をマージ済み。2026-08-23 T17をPR中へ更新。OQ-001をDeepL API Freeへ再決定
+- 2026-08-23 T17をマージ済み。OQ-002/003/004/005/006/007/010を決定。T18（検索）を追加し、T13に終了結果を含める

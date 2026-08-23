@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T17（DeepL翻訳）作業中。ブランチは `feature/T17-deepl-translation`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T17マージ済み。OQ-002〜007,010決定済み。次タスクは T18（単語検索）。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -121,9 +121,9 @@
 ## 現在の必須レビュー項目
 
 - OQ-013/014/016/017: 承認済み。
-- OQ-008/009/018: 2026-08-22に決定済み。決定内容は `docs/OPEN_QUESTIONS.md` 3節。
-- OQ-001/015: 2026-08-23再決定。DeepL API Free、候補1件、term 100文字、rate limit、Workers Free。secret名は `DEEPL_AUTH_KEY`。
-- T01〜T08, T16: マージ済み。T17はPR中。
-- OQ-008は `0002_boring_kabuki` で適用済み。重複登録は409で拒否する。
-- OQ-009は `0003_clean_the_executioner` でCASCADE適用済み。
+- OQ-008/009/018: 2026-08-22に決定済み。
+- OQ-001/015: 2026-08-23再決定。DeepL API Free、Workers Free。secret名は `DEEPL_AUTH_KEY`。
+- OQ-002/003/004/005/006/007/010: 2026-08-23決定済み。詳細は `docs/OPEN_QUESTIONS.md` 3節。
+- T01〜T08, T16, T17: マージ済み。次はT18。
+- 残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。T12の model ID はPOC-05でlockする。
 - 各タスク前: TASKSの意思決定列にあるOQ。

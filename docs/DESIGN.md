@@ -131,7 +131,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 - **WordMeaning**: Word配下の1件以上の意味。表示順と`normalizedMeaning`を持つ。
 - **TestResult**: 回答時点の`userId`、`wordId`、回答、最終正誤、`exact|normalized|ai`、ヒント利用、時刻を持つ。
 
-テストセッションは出題数・重複・終了画面が未決のためMVP schemaへ入れない。採用時は別migrationとタスクを追加する。
+テストセッションの正本はクライアントの今回テスト状態とする。`test_sessions` テーブルは作らない（OQ-005/010）。各回答は従来どおり `test_results` へ1件ずつ保存する。
 
 ## 5. API設計
 
@@ -181,7 +181,7 @@ BetterAuthUser 1 ─── * Word 1 ─── 1..* WordMeaning
 |---|---|---:|---|
 | GET/POST | `/api/auth/*` | Better Auth | login、callback、session、logout |
 | GET | `/api/v1/health` | 不要 | processのlivenessのみ。本文は `{ "status": "ok" }`。D1/AIの秘密や詳細を返さない |
-| GET | `/api/v1/words` | 必須 | 所有単語と意味・統計のcursor一覧 |
+| GET | `/api/v1/words` | 必須 | 所有単語と意味・統計のcursor一覧。任意の `q` で見出し・意味を部分一致検索 |
 | POST | `/api/v1/words` | 必須 | 単語と1件以上の意味を原子的に作成 |
 | GET | `/api/v1/words/:wordId` | 必須 | 所有単語の詳細 |
 | PUT | `/api/v1/words/:wordId` | 必須 | 単語・意味・ヒントを原子的に置換更新 |
@@ -260,8 +260,12 @@ DELETE /api/v1/words/:wordId
 #### 単語一覧
 
 ```http
-GET /api/v1/words?limit=20&cursor=opaque
+GET /api/v1/words?limit=20&cursor=opaque&q=
 ```
+
+`q` は任意。trim後0文字または未指定は通常一覧。trim後1〜100文字。`normalizeTerm(q)` が `words.normalized_term` に部分一致するか、`normalizeMeaning(q)` がいずれかの `word_meanings.normalized_meaning` に部分一致すればヒットする。所有者scope必須。他ユーザーはヒットしない。`%` `_` は LIKE のメタ文字としてエスケープする。空結果は `items: []`。
+
+`limit`未指定は20。上限100はOQ-012未決のため防御値。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
 
 ```json
 200 OK
@@ -284,9 +288,7 @@ GET /api/v1/words?limit=20&cursor=opaque
 }
 ```
 
-`limit`未指定は20。上限100はOQ-012未決のため防御値。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
-
-query paramは既知keyだけ抜き出さず、`c.req.query()` 全体をstrict schemaへ渡す。`?limmit=20` のような綴り違いを黙って既定値で処理せず、`422 VALIDATION_FAILED` で返すため。
+query paramは既知keyだけ抜き出さず、`c.req.query()` 全体をstrict schemaへ渡す。`q` は任意の既知key。`?limmit=20` のような綴り違いを黙って既定値で処理せず、`422 VALIDATION_FAILED` で返すため。
 
 一覧はページ確定・意味・統計の3 queryに分ける（`docs/DATABASE.md` 6.1）。1本のjoin + `GROUP BY` + `ORDER BY` はSQLiteが一時B-treeで並べ直し、cursor indexが効かなくなる。
 
@@ -332,6 +334,7 @@ POST /api/v1/study/questions
 ```json
 200 OK
 {
+  "ownedWordCount": 12,
   "question": {
     "wordId": "w_...",
     "term": "issue",
@@ -340,7 +343,13 @@ POST /api/v1/study/questions
 }
 ```
 
-`excludeWordIds`と重複制御はOQ-005が決まるまで暫定。候補がなければ404 `NO_STUDY_WORDS`を返す。
+出題数の選択（5/10/20/全部、既定10）はクライアントのテスト状態であり、このrequestには載せない。サーバーは所有単語から `excludeWordIds` を除いた集合から1件返す（OQ-005）。
+
+- `excludeWordIds` は opaque ID の配列。上限500。重複は無視。未知ID・他ユーザーIDは候補に出ないだけでエラーにしない。
+- `mode` が `random` なら一様抽選、`weak` なら OQ-006 の重み付き抽選。
+- 所有0件は `404 NO_STUDY_WORDS`。
+- 所有はあるが除外で尽きた場合は `200` で `question: null`（今回テストの終了）。
+- 同一テスト内の重複防止の正本は `excludeWordIds`。`test_sessions` は持たない。
 
 #### ヒント取得
 
@@ -379,7 +388,7 @@ POST /api/v1/study/answers
 }
 ```
 
-serverは`wordId`をsession userで再取得し、クライアントから意味・正誤・judgeTypeを受け取らない。AI障害時に履歴を保存するかはOQ-003決定まで未確定とし、暫定設計は503で保存しない。
+serverは`wordId`をsession userで再取得し、クライアントから意味・正誤・judgeTypeを受け取らない。AI障害時（timeout / 429 / 5xx / 契約外JSON）は履歴を保存せず `503 AI_JUDGE_UNAVAILABLE` を返す（OQ-003）。クライアントは同じ回答を再試行できる。
 
 ## 6. 主要処理フロー
 
@@ -420,10 +429,11 @@ session.user.id + wordIdで単語と全意味を取得
   -> 未存在/非所有なら404
   -> raw answerがいずれかと完全一致?
        yes -> exact / correct
-       no  -> answerと全意味を必須規則でnormalize
+       no  -> answerと全意味原文を `normalizeForJudgement` で正規化
              -> いずれかと一致?
                   yes -> normalized / correct
                   no  -> SemanticJudgeをtimeout付きで1回呼ぶ
+                        -> 失敗なら履歴を書かず 503
                         -> response schemaを検証
                         -> ai / providerのboolean結果
   -> test_resultを1件保存
@@ -432,11 +442,25 @@ session.user.id + wordIdで単語と全意味を取得
 
 `AnswerJudge`はAI呼び出し回数が0または1であることをテストする。AIへuser ID、hint、履歴、OAuth情報を送らない。
 
+`normalizeForJudgement`（OQ-004）:
+
+1. NFKC、trim、`toLocaleLowerCase('ja-JP')`、連続空白の1個化（`normalizeMeaning` と同じ）
+2. カタカナをひらがなへ写す（U+30A1–U+30F6 → U+3041–U+3096。`ヴ` は `ゔ`）
+3. Unicode句読点 `\p{P}` と記号 `\p{S}` を除去する。長音 `ー`（Lm）は残る
+4. 結果が空文字なら normalized 一致にしない
+
+`normalizeTerm` と保存用 `normalizeMeaning` は変えない。
+
 ### 6.4 出題
 
-- `random`: 所有単語全体から一様抽選する。
-- `weak`: 所有単語と履歴集計を読み、各単語に正の重みを与えてapplicationで重み付き抽選する。
-- 正確な重み、未回答、件数、重複制御はOQ-005/006の決定までstrategyの設定として隔離する。
+- 開始UI: `random` / `weak` と出題数 5 / 10 / 20 / 全部。既定10。
+- 今回の出題数 `plannedCount = min(選択件数, ownedWordCount)`。全部なら `ownedWordCount`。
+- `random`: 除外済みを除く所有単語から一様抽選する。
+- `weak`: 除外済みを除く所有単語に OQ-006 の正の重みを付けて抽選する。
+  - `accuracy = 未回答 ? 0 : correct / total`
+  - `weight = max(1 - accuracy, 0.05)`
+  - 回答回数と直近正誤は見ない。
+- クライアントは出した `wordId` を `excludeWordIds` へ蓄積し、`plannedCount` 件回答するか `question === null` で終了結果へ進む。
 - MVPは個人データ規模で全候補を扱う。OQ-012が大規模ならquery方式を再設計する。
 
 ### 6.5 統計
@@ -449,7 +473,7 @@ LEFT JOIN words -> test_results
                 : status=answered, accuracy=correct/total
 ```
 
-UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡し、必ず文字列も併記する。色式はOQ-007で確定する。
+UIは`accuracy === null`を白 `#ffffff`、回答済みは OQ-007 のHSL補間（0% `hsl(0 70% 88%)` → 100% `hsl(95 55% 82%)`）へ渡し、必ず文字列も併記する。実装はT14。
 
 ## 7. 横断的関心事
 
@@ -482,7 +506,7 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 ### 7.4 timeout / retry
 
 - D1の通常queryをアプリで無条件retryしない。
-- AI/翻訳はAbortSignalでtimeoutする。翻訳は8秒。429/5xxのサーバー自動retryはしない。クライアントは失敗メッセージを見て再試行できる。
+- AI/翻訳はAbortSignalでtimeoutする。翻訳もAI判定も8秒。429/5xxのサーバー自動retryはしない。クライアントは失敗メッセージを見て再試行できる。
 - mutationの自動retryはidempotencyが保証できる場合だけにする。
 
 ### 7.5 observability
@@ -494,9 +518,10 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 ### 7.6 rate limit / abuse
 
 - translationは認証ユーザー単位でisolate内スライディングウィンドウを適用する（10回 / 60秒）。
+- AI判定も認証ユーザー単位で **別カウンタ** の 10回 / 60秒 を適用する（OQ-002）。
 - Cloudflare Rate Limiting製品は使わない（OQ-015 Workers Free）。複数isolate間では共有されない。
 - 入力長100文字、候補1件、timeout 8秒を上限化し、denial-of-walletを抑える。DeepLの月次quota（456）も `RATE_LIMITED`。
-- AI判定の具体値はOQ-002決定後に設定する。
+- AI判定へ送るのは英単語・登録意味・回答だけ。Workers AIのneuron消費はtimeoutとrate limitで抑える。
 
 ## 8. トレードオフ・代替案
 
@@ -506,7 +531,7 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 | Hono REST API | Start server functionsのみ | 将来外部クライアント要件のため。UI固有呼び出しへ閉じない |
 | 履歴から都度集計 | wordsへ集計値を保存 | MVPは整合性優先。実測で遅い場合のみcache/集計を導入 |
 | normalized値を保存 | 判定時だけ計算 | 一覧検索・重複判定の将来利用と一貫性。ただし正規化version変更時の再計算が必要 |
-| 問題1件ずつ取得 | test_sessionsを先に導入 | 出題数・終了画面が未決。採用決定までschemaを増やさない |
+| 問題1件ずつ取得 | test_sessionsを先に導入 | 出題数・終了結果はクライアントの今回状態で足りる。回答正本は `test_results` |
 | AIを最後のfallback | 全回答をAI判定 | 費用・遅延・誤判定を減らし、決定的な一致を優先 |
 | provider port | 翻訳SDKをUIへ直結 | 品質・料金・provider変更に備える。MVPの翻訳adapterはDeepL 1つ |
 
@@ -516,25 +541,25 @@ T17時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
 - 公開DELETEはT07で適用済み。履歴もCASCADEで消える。確認操作なしではDELETEを送らない。
-- 重複拒否（OQ-008）はT16で適用済み。`existingWordId` は応答に含めるが、既存単語の編集画面へ誘導するUIは作らない（OQ-010はMVP外のまま）。
+- 重複拒否（OQ-008）はT16で適用済み。`existingWordId` は応答に含めるが、既存単語の編集画面へ誘導するUIは作らない（OQ-010の重複誘導はMVP外）。
 - 単語のサーバー状態はTanStack Query。相対URLのfetchはclientだけで行い、SSRではqueryをenabledにしない。
 - clientのAPI呼び出しは `src/platform/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。204は本文なし成功として扱う。翻訳と単語で共用するため platform へ昇格した。
 - 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
 - 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
-- カード色の補間はOQ-007/T14。一覧は未回答と正解率を文字で示す。
+- カード色の補間はOQ-007。実装はT14。一覧は未回答と正解率を文字でも示す。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
 - 通常CIはDeepLをlive callしない。POC-06の品質確認はpreviewの人手作業。
-- Workers AI bindingは残すが翻訳では使わない。T12まで `env.AI.run` を呼ばない。
+- Workers AI bindingは翻訳では使わない。T12で `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDはPOC-05でlockする。
 
 ## 10. 未決事項
 
-- `OPEN_QUESTIONS.md` OQ-001〜OQ-018を参照。OQ-001とOQ-015は決定済み。
-- 特にOQ-003（AI障害）は履歴一貫性、OQ-005（出題数）はtest session要否へ直結する。
+- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）と OQ-012（本番規模）だけ。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Google previewは人間がOAuth clientと `.dev.vars` を設定して確認する。
-- T08: 翻訳UI/APIは実装済み。live品質はWorkers AIでは不足したためT17でDeepLへ差し替える。previewでのDeepL確認は人間が `DEEPL_AUTH_KEY` を設定して行う。
+- T08/T17: 翻訳はDeepL API Free。previewでのDeepL確認は人間が `DEEPL_AUTH_KEY` を設定して行う。
+- T12: Workers AIの具体model IDはPOC-05の固定評価セットでlockする。
 
 ## 11. 更新履歴
 
@@ -551,3 +576,4 @@ T17時点の意図的な限定:
 - 2026-08-22 T07で公開DELETEとCASCADEを実装。204をfetch-jsonで本文なし成功とし、一覧は2段階確認のうえ取り直す。逸脱節をT07時点へ更新
 - 2026-08-22 T08で翻訳候補APIとWorkers AI adapterを実装。OQ-001/015の決定を反映。逸脱節をT08時点へ更新
 - 2026-08-23 T17で翻訳adapterをDeepL API Freeへ差し替え。OQ-001再決定。逸脱節をT17時点へ更新
+- 2026-08-23 OQ-002/003/004/005/006/007/010決定。出題・判定正規化・苦手重み・AI障害・検索・終了結果・カード色を設計へ反映。`test_sessions` は作らない
