@@ -24,10 +24,10 @@
 | Drizzle + D1 | 実現可能 | DrizzleがD1 driverとWorkers環境を公式サポート |
 | ユーザー分離・単語CRUD・複数意味 | 実現可能 | RDBのFK、API所有者スコープ、D1 batchで整合性を持たせられる |
 | 完全一致・正規化一致 | 実現可能 | TypeScriptの決定的な純粋関数で実装・単体テスト可能 |
-| AI意味判定 | 条件付き可能 | Workers AI等で実装可能だが、モデル、構造化出力、品質、料金、タイムアウト、障害時仕様が未決 |
+| AI意味判定 | 条件付き可能 | 提供者はWorkers AI。model ID・構造化出力品質はPOC-05で確認する |
 | 翻訳候補 | 実現可能（品質はpreview確認） | DeepL API Freeを採用。候補1件。live品質は人手確認 |
-| ランダム／苦手優先出題 | 条件付き可能 | 履歴集計と重み付き抽選で可能。重み、未回答、重複、件数の仕様決定が必要 |
-| 履歴・正解率・カード色 | 実現可能 | 履歴集計で算出可能。正確な色・アクセシビリティ基準のみ未決 |
+| ランダム／苦手優先出題 | 実現可能 | 出題数・重複・重みはOQ-005/006で決定済み |
+| 履歴・正解率・カード色 | 実現可能 | 色式はOQ-007で決定済み。実装はT14 |
 | 将来Chrome拡張から同じAPIを利用 | 条件付き可能 | REST境界は再利用可能。拡張向け認証、CORS、権限は将来PoCが必要 |
 | 想定MVP規模でのD1利用 | 条件付き可能 | 最大容量は十分と見込むが、単一DBはクエリを逐次処理するため、件数・同時利用の目標設定と計測が必要 |
 
@@ -83,7 +83,7 @@
 - Workers AIはWorkers bindingから利用でき、テキスト生成・翻訳を含むタスクを提供する。翻訳用途では `@cf/meta/m2m100-1.2b` のpreview品質が不足した（2026-08-23）。
 - 翻訳は DeepL API Free（`https://api-free.deepl.com/v2/translate`）を採用した（OQ-001再決定）。1リクエスト1訳文のため候補は1件。入力100文字、ユーザーあたり10回/60秒、timeout 8秒、自動retryなし。月50万文字。
 - 認証は `Authorization: DeepL-Auth-Key` header。secret名は `DEEPL_AUTH_KEY`。query/bodyへkeyを載せない。
-- AIの意味一致は決定的ではない。構造化出力のschema検証、timeout、外部呼び出しモックが必要である。OQ-002までmodelを固定しない。
+- AIの意味一致は決定的ではない。構造化出力のschema検証、timeout、外部呼び出しモックが必要である。model IDはPOC-05まで固定しない。
 - 文字列一致でAIを呼ばない設計はコスト・遅延・誤判定を減らし、要件に整合する。
 
 出典:
@@ -124,14 +124,14 @@
 | POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 **合格**（2026-08-20: healthは JSON `{"status":"ok"}`、未知APIはJSON 404、`/` はHTML） |
 | POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live Google previewは未実施**（OAuth client と `.dev.vars` は人間設定） |
 | POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 **コード側合格**（2026-08-20: CHECK、複合owner FK、batch rollback、履歴ありRESTRICT、2ユーザー隔離）。**preview D1への人手適用は未実施** |
-| POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T11 |
+| POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T12。提供者はWorkers AI（OQ-002）。model IDはこのPoCでlockする |
 | POC-06 翻訳候補 | 代表単語セットで候補品質、遅延、料金を比較 | T08でWorkers AIを実装。preview品質不足により **T17でDeepLへ差し替え**。live DeepL確認は人間 |
 
 ## 6. 技術比較と推奨
 
 - **ホスティング**: 要件でCloudflareが決定済み。Startの公式Cloudflare手順を第一候補にし、RC統合が失敗した場合だけHono Worker + SPA等への差し戻しを検討する。
 - **認証**: Better Authが決定済み。T02で `@better-auth/drizzle-adapter`（`transaction: false`）を採用し、D1 native adapterは使わない。live Google loginは人間がOAuth clientを設定してpreview確認する。
-- **AI/翻訳**: 翻訳はDeepL API Freeを採用（OQ-001再決定）。portは残し、品質または料金条件を満たさなければ差し替える。AI判定は未決。
+- **AI/翻訳**: 翻訳はDeepL API Freeを採用（OQ-001再決定）。AI判定の提供者はWorkers AI（OQ-002）。model IDはPOC-05でlockする。portは残し、品質または料金条件を満たさなければ差し替える。
 - **テスト**: Node上だけのVitestではWorkers固有差を見逃すため、CloudflareのWorkers Vitest integrationを採用する。
 
 ## 7. 前提・制約
@@ -143,7 +143,7 @@
 
 ## 8. 差し戻し提案
 
-困難判定はないため要件全体の差し戻しは不要。ただし OQ-002〜OQ-007、OQ-010、OQ-012 は記載したタスク期限までに決める。PoCが不合格なら、該当技術またはMVP範囲を要件フェーズへ差し戻す。
+困難判定はないため要件全体の差し戻しは不要。残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。POC-05が不合格ならAI判定のmodelまたは提供者を要件フェーズへ差し戻す。
 
 ## 9. 更新履歴
 
@@ -153,3 +153,4 @@
 - 2026-08-20 POC-04のコード側合格と preview D1 人手適用未実施を記録
 - 2026-08-22 OQ-001/015決定。POC-06はcontract mockをコード側合格、live品質比較は未実施
 - 2026-08-23 OQ-001再決定。翻訳をDeepL API Freeへ差し替え。Workers AI翻訳は品質不足で不採用
+- 2026-08-23 OQ-002〜007,010決定。POC-05の担当をT12へ訂正。AI判定提供者はWorkers AI

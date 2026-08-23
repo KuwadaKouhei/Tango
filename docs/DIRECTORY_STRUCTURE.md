@@ -284,12 +284,16 @@ composition-root -> application + infrastructure
 3. 独自一覧・辞書連携・ルールを持つまで別featureへ分けない。
 4. create/update/listのZod、use case、repository、UI、integration testを同じ縦スライスで更新する。
 
-### 6.3 テスト終了画面を採用
+### 6.3 テスト終了画面（OQ-010採用、T13）
 
-1. OQ-005/OQ-010を決定済みにする。
-2. `test_sessions`の必要性をDESIGN/DATABASEで再設計する。
-3. `features/study`へsession use case/api/uiを追加する。
-4. routesに終了画面を足し、TASKSへ独立タスクを追加する。
+1. `test_sessions` は作らない。今回の判定応答をクライアントが保持し、終了画面へ渡す。
+2. `features/study` の結果UIと `src/routes` の終了画面をT13で追加する。
+3. 再テスト操作とsession repositoryは作らない。
+
+### 6.4 単語検索（OQ-010採用、T18）
+
+1. 新featureは作らず `features/words` の list use case / schema / 一覧UIへ `q` を足す。
+2. FTSテーブルは作らない。
 
 ## 7. framework規約との整合
 
@@ -308,7 +312,7 @@ composition-root -> application + infrastructure
 - T01で確定したscaffold差: aliasは `#/*`、CSSは `src/styles.css`、Prettier設定は `prettier.config.js`、Start middleware用 `src/start.ts` は未生成（必要になったタスクで追加）。
 - T02で確定: Drizzle KitのSQLは `drizzle/` 直下（`drizzle/migrations/` ではない）。secret型は `src/env.d.ts` で Cloudflare.Env へ mergeする。
 - AI/翻訳providerがWorkers bindingでなくHTTP APIの場合も、adapter配置は変えない。
-- test session採用時のdirectoryはOQ-005/OQ-010決定後に更新する。
+- T10で `features/study/domain/normalize-for-judgement.ts` を追加する。保存用 normalize とは分ける。
 
 ## 10. 参照
 
@@ -331,3 +335,4 @@ composition-root -> application + infrastructure
 - 2026-08-22 T07で word-delete-api.test.ts を追加
 - 2026-08-22 T08で translation feature、Workers AI adapter、fetch-jsonのplatform昇格、contract testを追加
 - 2026-08-23 T17で翻訳adapterを deepl-translation-service へ差し替え
+- 2026-08-23 OQ-005/010決定。終了画面はsession tableなし、検索はwords featureへ足す。T10で判定用normalizeをstudy domainへ置く
