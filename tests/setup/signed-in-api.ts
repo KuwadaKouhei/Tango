@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
+import { createStudyRoutes } from '../../src/features/study/api/study-routes'
 import { createTranslationRoutes } from '../../src/features/translation/api/translation-routes'
 import type { TranslationService } from '../../src/features/translation/domain/translation-service'
 import { createWordRoutes } from '../../src/features/words/api/word-routes'
+import type { RandomSource } from '../../src/platform/random'
 import type { AuthBindings } from '../../src/server/api/bindings'
 import { handleApiError } from '../../src/server/api/error-handler'
 import type { AuthVariables } from '../../src/server/api/middleware/auth'
@@ -26,6 +28,7 @@ export const createSignedInApi = (
     translationService?: TranslationService
     rateLimiter?: SlidingWindowRateLimiter
     timeoutMs?: number
+    random?: RandomSource
   } = {},
 ) => {
   const app = new Hono<SignedInApiEnv>()
@@ -41,6 +44,7 @@ export const createSignedInApi = (
   })
   privateV1.route('/', createWordRoutes())
   privateV1.route('/', createTranslationRoutes(deps))
+  privateV1.route('/', createStudyRoutes(deps))
   app.route('/api/v1', privateV1)
 
   return app

@@ -49,3 +49,18 @@ legend {
 .word-search input {
   flex: 1 1 12rem;
 }
+
+.study-setup,
+.study-session {
+  max-width: 40rem;
+}
+
+.study-term {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.study-hint {
+  border-left: 4px solid #555;
+  padding-left: 0.75rem;
+}
