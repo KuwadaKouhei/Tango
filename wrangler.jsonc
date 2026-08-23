@@ -15,12 +15,11 @@
     {
       "binding": "DB",
       "database_name": "tango",
-      // local/preview用の仮ID。本番D1は `wrangler d1 create tango` の実IDへ置き換える。
-      "database_id": "00000000-0000-0000-0000-000000000001",
+      "database_id": "9f3a05f9-df97-4df5-9bcb-61e8c272c229",
       "migrations_dir": "drizzle",
     },
   ],
   "vars": {
-    "BETTER_AUTH_URL": "http://localhost:3000",
+    "BETTER_AUTH_URL": "https://tango.eitango.workers.dev",
   },
 }
