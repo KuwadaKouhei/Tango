@@ -23,7 +23,9 @@ const readBody = async <T>(
   c: {
     req: { json: () => Promise<unknown> }
   },
-  parse: (body: unknown) =>
+  parse: (
+    body: unknown,
+  ) =>
     | { success: true; data: T }
     | { success: false; error: { issues: { path: PropertyKey[] }[] } },
 ): Promise<T> => {

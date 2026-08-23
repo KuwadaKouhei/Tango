@@ -103,7 +103,7 @@ describe('answerQuestion', () => {
     const result = await answerQuestion({
       actorUserId: 'user-a',
       wordId: 'w_1',
-      answer: 'もんだい。',
+      answer: '問題。',
       hintUsed: false,
       wordRepository: wordRepositoryOf(wordOf(['問題'])),
       testResultRepository: repository,

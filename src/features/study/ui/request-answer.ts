@@ -1,13 +1,9 @@
 import { fetchJson } from '../../../platform/fetch-json'
-import {
-  apiErrorSchema,
-  studyAnswerResponseSchema,
-  type StudyAnswerResult,
-} from '../api/study-schemas'
+import { apiErrorSchema, studyAnswerResponseSchema } from '../api/study-schemas'
+import type { StudyAnswerResult } from '../api/study-schemas'
 
 export type AnswerClientResult =
-  | { ok: true; result: StudyAnswerResult }
-  | { ok: false; message: string }
+  { ok: true; result: StudyAnswerResult } | { ok: false; message: string }
 
 export const requestAnswer = async (input: {
   wordId: string

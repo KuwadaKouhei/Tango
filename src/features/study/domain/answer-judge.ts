@@ -1,8 +1,7 @@
 import { normalizeForJudgement } from './normalize-for-judgement'
 
 export type LocalAnswerJudgement =
-  | { isCorrect: true; judgeType: 'exact' | 'normalized' }
-  | { isCorrect: false }
+  { isCorrect: true; judgeType: 'exact' | 'normalized' } | { isCorrect: false }
 
 /**
  * exact → normalized の順。先に決着したら後段へ進まない。

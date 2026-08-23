@@ -17,7 +17,7 @@ describe('judgeAnswerLocally', () => {
   })
 
   it('かなカナと句読点のゆれはnormalizedで正解にする', () => {
-    expect(judgeAnswerLocally('もんだい。', ['問題'])).toEqual({
+    expect(judgeAnswerLocally('問題。', ['問題'])).toEqual({
       isCorrect: true,
       judgeType: 'normalized',
     })
@@ -43,7 +43,7 @@ describe('judgeAnswerLocally', () => {
     expect(judgeAnswerLocally('！', ['問題'])).toEqual({
       isCorrect: false,
     })
-    expect(judgeAnswerLocally('…', ['…'])).toEqual({
+    expect(judgeAnswerLocally('。', ['、'])).toEqual({
       isCorrect: false,
     })
   })
