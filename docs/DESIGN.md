@@ -550,15 +550,15 @@ T17時点の意図的な限定:
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
-- 通常CIはDeepLをlive callしない。POC-06の品質確認はpreviewの人手作業。
+- 通常CIはDeepLをlive callしない。POC-06の品質確認は2026-08-23に配備Workerで人手実施済み。
 - Workers AI bindingは翻訳では使わない。T12で `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDはPOC-05でlockする。
 
 ## 10. 未決事項
 
 - 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）と OQ-012（本番規模）だけ。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
-- T02: Better Auth + Google + D1のコード経路は実装済み。live Google previewは人間がOAuth clientと `.dev.vars` を設定して確認する。
-- T08/T17: 翻訳はDeepL API Free。previewでのDeepL確認は人間が `DEEPL_AUTH_KEY` を設定して行う。
+- T02: Better Auth + Google + D1のコード経路は実装済み。live Googleは2026-08-23に配備Workerで確認済み。
+- T08/T17: 翻訳はDeepL API Free。POC-06のlive確認は2026-08-23に配備Workerで実施済み。
 - T12: Workers AIの具体model IDはPOC-05の固定評価セットでlockする。
 
 ## 11. 更新履歴
@@ -578,3 +578,4 @@ T17時点の意図的な限定:
 - 2026-08-23 T17で翻訳adapterをDeepL API Freeへ差し替え。OQ-001再決定。逸脱節をT17時点へ更新
 - 2026-08-23 OQ-002/003/004/005/006/007/010決定。出題・判定正規化・苦手重み・AI障害・検索・終了結果・カード色を設計へ反映。`test_sessions` は作らない
 - 2026-08-23 T18で一覧検索 `q` を実装。LIKE は `ESCAPE '!'`
+- 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新

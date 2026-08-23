@@ -123,6 +123,8 @@ previewで `@cf/meta/m2m100-1.2b` の訳質が単語帳の意味候補として�
 
 Workers AI bindingはT12のAI判定用に残し、翻訳からは外す。通常CIはDeepLをlive callしない。
 
+POC-06のDeepL live確認は2026-08-23に配備Workerで実施した。候補1件をフォームへ載せ、翻訳操作だけではDBへ書かないことを確認。providerはDeepL API Freeのまま。
+
 ### OQ-005（2026-08-23）
 
 テスト開始時に出題数を選ぶ。利用者決定。
@@ -248,3 +250,4 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 - 2026-08-22 OQ-001をWorkers AI `@cf/meta/m2m100-1.2b`・候補1件・入力100文字・rate limit、OQ-015をWorkers Freeとして決定済みへ更新
 - 2026-08-23 OQ-001をDeepL API Freeへ再決定。候補1件・入力100文字・timeout/rate limitは維持
 - 2026-08-23 OQ-002/003/004/005/006/007/010を決定済みへ更新。検索と終了結果をMVPへ含め、間違い再テスト・重複誘導・AI手動修正はMVP外
+- 2026-08-23 POC-06のDeepL live確認を配備Workerで実施済みと記録
