@@ -124,7 +124,7 @@
 - OQ-008/009/018: 2026-08-22に決定済み。
 - OQ-001/015: 2026-08-23再決定。DeepL API Free、Workers Free。secret名は `DEEPL_AUTH_KEY`。
 - OQ-002/003/004/005/006/007/010: 2026-08-23決定済み。詳細は `docs/OPEN_QUESTIONS.md` 3節。
-- T01〜T09, T16, T17, T18: マージ済み。T10は作業中。
+- T01〜T09, T16, T17, T18: マージ済み。T10はPR中。
 - POC-03/04/06: 2026-08-23に配備Workerでlive確認済み。
 - 残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。T12の model ID はPOC-05でlockする。
 - 各タスク前: TASKSの意思決定列にあるOQ。
