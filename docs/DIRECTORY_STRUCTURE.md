@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T07で単語削除とCASCADEを反映済み**
+> 状態: **T09で study 出題・ヒントを追加済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -98,16 +98,22 @@ Tango/
 │   │   │   └── public.ts
 │   │   ├── study/
 │   │   │   ├── domain/
-│   │   │   │   ├── answer-judge.ts
-│   │   │   │   ├── normalize-meaning.ts
-│   │   │   │   ├── question-selector.ts
-│   │   │   │   └── semantic-judge.ts
+│   │   │   │   ├── study-limits.ts
+│   │   │   │   ├── study-question.ts
+│   │   │   │   ├── planned-count.ts
+│   │   │   │   └── question-selector.ts
 │   │   │   ├── application/
-│   │   │   │   ├── answer-question.ts
 │   │   │   │   ├── get-hint.ts
 │   │   │   │   └── select-question.ts
 │   │   │   ├── api/
+│   │   │   │   ├── study-routes.ts
+│   │   │   │   └── study-schemas.ts
 │   │   │   ├── ui/
+│   │   │   │   ├── study-setup-form.tsx
+│   │   │   │   ├── study-session.tsx
+│   │   │   │   ├── study-session-search.ts
+│   │   │   │   ├── request-next-question.ts
+│   │   │   │   └── request-hint.ts
 │   │   │   └── public.ts
 │   │   └── history/
 │   │       ├── domain/
@@ -137,6 +143,7 @@ Tango/
 │   ├── platform/
 │   │   ├── app-error.ts
 │   │   ├── clock.ts
+│   │   ├── random.ts
 │   │   ├── fetch-json.ts
 │   │   └── ids.ts
 │   ├── routes/
@@ -152,7 +159,7 @@ Tango/
 │   │       ├── study/
 │   │       │   ├── index.tsx
 │   │       │   └── session.tsx
-│   │       └── history.tsx
+│   │       └── history.tsx                 # T13以降
 │   ├── server/
 │   │   ├── api/
 │   │   │   ├── app.ts
@@ -183,7 +190,7 @@ Tango/
 │   │   ├── word-detail-api.test.ts    # HTTP契約。GET/PUT・404・Origin・422
 │   │   ├── word-duplicate-api.test.ts # HTTP契約。409・正規化同一視・UNIQUE違反変換
 │   │   ├── word-delete-api.test.ts    # HTTP契約。DELETE 204・cascade・404・Origin
-│   │   ├── study-api.test.ts
+│   │   ├── study-api.test.ts              # HTTP契約。出題・hint・404・422・所有者分離
 │   │   └── translation-api.test.ts    # HTTP契約。200・DB未更新・422・429・502・503
 │   ├── contract/
 │   │   ├── semantic-judge.contract.test.ts
@@ -339,3 +346,4 @@ composition-root -> application + infrastructure
 - 2026-08-23 T17で翻訳adapterを deepl-translation-service へ差し替え
 - 2026-08-23 OQ-005/010決定。終了画面はsession tableなし、検索はwords featureへ足す。T10で判定用normalizeをstudy domainへ置く
 - 2026-08-23 T18で word-list-search と escape-like-pattern を追加
+- 2026-08-23 T09で study feature、`/study`、`/study/session`、study-api test を追加。判定と苦手抽選のfileはT10/T11

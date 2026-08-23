@@ -57,6 +57,8 @@ export function WordList({ onSignOut }: { onSignOut: () => void }) {
       <p>
         <Link to="/words/new">単語を登録</Link>
         {' / '}
+        <Link to="/study">テストを始める</Link>
+        {' / '}
         <button type="button" onClick={onSignOut}>
           ログアウト
         </button>

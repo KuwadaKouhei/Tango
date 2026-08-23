@@ -3,6 +3,7 @@ export type AppErrorCode =
   | 'UNAUTHENTICATED'
   | 'ORIGIN_NOT_ALLOWED'
   | 'WORD_NOT_FOUND'
+  | 'NO_STUDY_WORDS'
   | 'WORD_DUPLICATE'
   | 'NOT_FOUND'
   | 'VALIDATION_FAILED'
@@ -49,6 +50,14 @@ export class AppError extends Error {
 
   static wordNotFound(): AppError {
     return new AppError('WORD_NOT_FOUND', 404, '対象の単語が見つかりません。')
+  }
+
+  static noStudyWords(): AppError {
+    return new AppError(
+      'NO_STUDY_WORDS',
+      404,
+      'テストできる単語がまだありません。',
+    )
   }
 
   /**
