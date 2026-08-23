@@ -387,7 +387,7 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 1. Better Authのlock versionで認証schemaを生成しレビューする。
 2. Drizzle schemaからSQL migrationを生成する。
 3. local D1へ適用し、FK、CHECK、index、batch rollbackをWorkers integration testで検証する。
-4. preview D1へ同じmigrationを適用し、Google OAuth/sessionとCRUDを確認する。
+4. preview D1へ同じmigrationを適用し、Google OAuth/sessionとCRUDを確認する。2026-08-23にremote D1へ `0000`〜`0003` を適用し、配備WorkerでOAuth/sessionとCRUDを確認済み。
 5. production適用前にTime Travel/backup方針とrollback手順を確認する。
 
 ルール:
@@ -435,3 +435,4 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 - 2026-08-22 T07で `0003_clean_the_executioner` を追加し `test_results` のFKをCASCADEへ。単体 `word_id` FKもCASCADEにしないとNO ACTION側が削除を止めることを明記
 - 2026-08-23 OQ-004/006/010決定。保存用正規化は現状維持。判定追加正規化は非保存。苦手重み式と検索LIKEを記載。`test_sessions` は作らない
 - 2026-08-23 T18で検索LIKEのESCAPEを `!` に確定
+- 2026-08-23 remote D1へ同一migrationを適用し、配備WorkerでOAuth/CRUDを確認（POC-04 live）

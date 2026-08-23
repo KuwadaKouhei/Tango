@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T09 PR中（cursor/t09-random-study-4bb7）。**
+> 状態: **T09マージ済み。POC-03/04/06は2026-08-23に配備Workerでlive確認済み。次はT10（local判定）。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -29,7 +29,7 @@
 | T08 | 翻訳候補による登録補助 | AC-004 | T04 | OQ-001,015（決定済み） | `feature/T08-translation` | ✅マージ済み |
 | T17 | 翻訳providerをDeepLへ切り替え | AC-004 | T08 | OQ-001再決定 | `feature/T17-deepl-translation` | ✅マージ済み |
 | T18 | 単語一覧の検索 | AC-014 | T05 | OQ-010（決定済み） | `feature/T18-word-search` | ✅マージ済み |
-| T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | OQ-005（決定済み） | `cursor/t09-random-study-4bb7` | 🟡PR中 |
+| T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | OQ-005（決定済み） | `cursor/t09-random-study-4bb7` | ✅マージ済み |
 | T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | OQ-004,018（決定済み） | `feature/T10-local-judgement` | ⬜未着手 |
 | T11 | 苦手優先出題 | AC-005 | T10 | OQ-006（決定済み）。OQ-012は個人規模で計測 | `feature/T11-weak-study` | ⬜未着手 |
 | T12 | AI意味判定fallback | AC-008,009 | T10 | OQ-002,003,015（決定済み）。model IDはPOC-05 | `feature/T12-ai-judgement` | ⬜未着手 |
@@ -157,7 +157,7 @@
 完了条件:
 
 - OQ-001/015は2026-08-22に決定済み（当初Workers AI `@cf/meta/m2m100-1.2b`）。2026-08-23にDeepL API Freeへ再決定（T17）。
-- POC-06のlive品質比較は通常CI対象外。previewでの人手確認を残す。
+- POC-06のlive品質比較は通常CI対象外。2026-08-23に配備Workerで人手確認済み。
 - 翻訳だけではwords/meaningsへ一切書き込まない。
 - 候補をフォームへ反映し、編集・削除・追加入力できる。
 - timeout、429、provider schema不正を共通errorへ変換する。
@@ -348,3 +348,4 @@ OQ-010のうち重複誘導UI、間違い再テスト、AI手動修正は未採�
 - 2026-08-23 T18を作業中へ更新
 - 2026-08-23 T18をPR中へ更新
 - 2026-08-23 T18をマージ済みへ更新。T09をPR中へ更新
+- 2026-08-23 T09をマージ済みへ更新。POC-03/04/06を配備Workerでのlive確認済みと記録。次はT10

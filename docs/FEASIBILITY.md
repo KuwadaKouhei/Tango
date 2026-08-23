@@ -1,7 +1,7 @@
 # 実現可能性調査: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **条件付きで実現可能。POC-01/02は合格。翻訳はOQ-001再決定でDeepL API Free。**
+> 状態: **条件付きで実現可能。POC-01〜04とPOC-06は合格。翻訳はOQ-001再決定でDeepL API Free。POC-05はT12待ち。**
 > 主要技術は公式ドキュメントとnpmレジストリの当日スナップショットで確認した。バージョンと料金は実装開始時・本番公開前に再確認する。
 
 ## 1. 概要・調査範囲
@@ -25,7 +25,7 @@
 | ユーザー分離・単語CRUD・複数意味 | 実現可能 | RDBのFK、API所有者スコープ、D1 batchで整合性を持たせられる |
 | 完全一致・正規化一致 | 実現可能 | TypeScriptの決定的な純粋関数で実装・単体テスト可能 |
 | AI意味判定 | 条件付き可能 | 提供者はWorkers AI。model ID・構造化出力品質はPOC-05で確認する |
-| 翻訳候補 | 実現可能（品質はpreview確認） | DeepL API Freeを採用。候補1件。live品質は人手確認 |
+| 翻訳候補 | 実現可能 | DeepL API Freeを採用。候補1件。2026-08-23に配備環境でlive品質を人手確認 |
 | ランダム／苦手優先出題 | 実現可能 | 出題数・重複・重みはOQ-005/006で決定済み |
 | 履歴・正解率・カード色 | 実現可能 | 色式はOQ-007で決定済み。実装はT14 |
 | 将来Chrome拡張から同じAPIを利用 | 条件付き可能 | REST境界は再利用可能。拡張向け認証、CORS、権限は将来PoCが必要 |
@@ -122,15 +122,15 @@
 |---|---|---|
 | POC-01 Start + Cloudflare | `dev`、Workers preview、production buildが成功し、SSR画面が応答する | T01 **合格**（2026-08-20: `vite dev` / `vite build` / `vite preview`、`/` が HTML） |
 | POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 **合格**（2026-08-20: healthは JSON `{"status":"ok"}`、未知APIはJSON 404、`/` はHTML） |
-| POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live Google previewは未実施**（OAuth client と `.dev.vars` は人間設定） |
-| POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 **コード側合格**（2026-08-20: CHECK、複合owner FK、batch rollback、履歴ありRESTRICT、2ユーザー隔離）。**preview D1への人手適用は未実施** |
+| POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live合格**（2026-08-23: 配備Workerでlogin、callback、session復元、logout、再login） |
+| POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 **コード側合格**（2026-08-20: CHECK、複合owner FK、batch rollback、履歴ありRESTRICT、2ユーザー隔離）。**live合格**（2026-08-23: remote D1へ同一migrationを適用し、OAuth/sessionとCRUDを確認） |
 | POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T12。提供者はWorkers AI（OQ-002）。model IDはこのPoCでlockする |
-| POC-06 翻訳候補 | 代表単語セットで候補品質、遅延、料金を比較 | T08でWorkers AIを実装。preview品質不足により **T17でDeepLへ差し替え**。live DeepL確認は人間 |
+| POC-06 翻訳候補 | 代表単語セットで候補品質、遅延、料金を比較 | T08でWorkers AIを実装。preview品質不足により **T17でDeepLへ差し替え**。**live合格**（2026-08-23: 配備WorkerでDeepL候補1件、翻訳だけでは未保存） |
 
 ## 6. 技術比較と推奨
 
 - **ホスティング**: 要件でCloudflareが決定済み。Startの公式Cloudflare手順を第一候補にし、RC統合が失敗した場合だけHono Worker + SPA等への差し戻しを検討する。
-- **認証**: Better Authが決定済み。T02で `@better-auth/drizzle-adapter`（`transaction: false`）を採用し、D1 native adapterは使わない。live Google loginは人間がOAuth clientを設定してpreview確認する。
+- **認証**: Better Authが決定済み。T02で `@better-auth/drizzle-adapter`（`transaction: false`）を採用し、D1 native adapterは使わない。live Google loginは2026-08-23に配備Workerで確認済み。
 - **AI/翻訳**: 翻訳はDeepL API Freeを採用（OQ-001再決定）。AI判定の提供者はWorkers AI（OQ-002）。model IDはPOC-05でlockする。portは残し、品質または料金条件を満たさなければ差し替える。
 - **テスト**: Node上だけのVitestではWorkers固有差を見逃すため、CloudflareのWorkers Vitest integrationを採用する。
 
@@ -154,3 +154,4 @@
 - 2026-08-22 OQ-001/015決定。POC-06はcontract mockをコード側合格、live品質比較は未実施
 - 2026-08-23 OQ-001再決定。翻訳をDeepL API Freeへ差し替え。Workers AI翻訳は品質不足で不採用
 - 2026-08-23 OQ-002〜007,010決定。POC-05の担当をT12へ訂正。AI判定提供者はWorkers AI
+- 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新
