@@ -303,21 +303,21 @@ POST /api/v1/translation-candidates
   "candidates": [
     { "text": "問題" }
   ],
-  "provider": "workers-ai",
-  "model": "@cf/meta/m2m100-1.2b"
+  "provider": "deepl",
+  "model": "deepl-translate"
 }
 ```
 
-OQ-001（2026-08-22）:
+OQ-001（2026-08-23再決定）:
 
-- providerはWorkers AI、modelは `@cf/meta/m2m100-1.2b`。候補は1件。追加の意味はフォームで手入力する。
-- `en` → `ja` 以外は `422 VALIDATION_FAILED`。termはtrim後1〜100文字。
-- 候補取得ではwords/word_meaningsへ書き込まない。provider/modelは透明性のため返すが、secretや生prompt、訳文全文はlogしない。
-- timeoutは8秒（AbortSignal）。サーバー側の自動retryはしない（Freeのneuronを二重消費しない）。
-- 認証ユーザーあたり 10回 / 60秒。isolate内スライディングウィンドウ。超えたら `429 RATE_LIMITED`。
-- provider応答が契約外なら `502 PROVIDER_INVALID_RESPONSE`。timeoutや一時障害は `503 AI_JUDGE_UNAVAILABLE`。
+- providerはDeepL API Free。応答の `model` は公開IDがないため `deepl-translate` ラベル。候補は1件。追加の意味はフォームで手入力する。
+- `en` → `ja` 以外は `422 VALIDATION_FAILED`。termはtrim後1〜100文字。DeepLへは `source_lang: "EN"` / `target_lang: "JA"`。
+- 候補取得ではwords/word_meaningsへ書き込まない。provider/modelは透明性のため返すが、secretや訳文全文はlogしない。
+- timeoutは8秒（AbortSignal）。サーバー側の自動retryはしない。
+- 認証ユーザーあたり 10回 / 60秒。isolate内スライディングウィンドウ。超えたら `429 RATE_LIMITED`。DeepLの429と月次quota 456も同じcodeへ変換する。
+- provider応答が契約外なら `502 PROVIDER_INVALID_RESPONSE`。timeoutや一時障害・キー未設定は `503 AI_JUDGE_UNAVAILABLE`。
 
-通常CIは `env.AI.run` をlive callしない。adapterはfake runnerのcontract testで固定する。
+通常CIはDeepLをlive callしない。adapterはfake `fetch` のcontract testで固定する。認証は `Authorization: DeepL-Auth-Key …` のみ。query/bodyにkeyを載せない。
 
 #### 問題取得
 
@@ -461,9 +461,9 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 - `/api/v1/health` 以外の `/api/v1/*` は `requireAuth` の配下。未認証は `401 UNAUTHENTICATED`。
 - repository queryは必ず`WHERE id = ? AND user_id = ?`または所有者scopeを含める。
 - 将来拡張用token/CORSをMVPへ先回り実装しない。
-- secretは `.dev.vars`（local）またはWorkers secret。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけを置き、OAuth secretは置かない。
-- Workers AIは `wrangler.jsonc` の `ai.binding = "AI"`。model IDはコード定数 `TRANSLATION_LIMITS`。通常CIでは `env.AI.run` を呼ばない。
-- `wrangler.test.jsonc` には AI binding を置かない。Workers Vitest が remote proxy（CLOUDFLARE_API_TOKEN）を要求するため。integration testはfake `TranslationService` を注入する。
+- secretは `.dev.vars`（local）またはWorkers secret。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけを置き、OAuth secretと `DEEPL_AUTH_KEY` は置かない。
+- Workers AIは `wrangler.jsonc` の `ai.binding = "AI"`。T12のAI判定用。翻訳は使わない。
+- 翻訳は `DEEPL_AUTH_KEY`。通常CIではDeepLを呼ばない。`wrangler.test.jsonc` の値はダミー。
 - 共通errorは `AppError`。`requestId` は `cf-ray` または `req_`+UUID。公開errorにSQL/stack/secretを含めない。
 - mutation（POST/PUT/PATCH/DELETE）は `BETTER_AUTH_URL` と `Origin` を照合し、不一致なら `403 ORIGIN_NOT_ALLOWED`。GETはOrigin不要。
 
@@ -495,7 +495,7 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 
 - translationは認証ユーザー単位でisolate内スライディングウィンドウを適用する（10回 / 60秒）。
 - Cloudflare Rate Limiting製品は使わない（OQ-015 Workers Free）。複数isolate間では共有されない。
-- 入力長100文字、候補1件、timeout 8秒を上限化し、denial-of-walletを抑える。
+- 入力長100文字、候補1件、timeout 8秒を上限化し、denial-of-walletを抑える。DeepLの月次quota（456）も `RATE_LIMITED`。
 - AI判定の具体値はOQ-002決定後に設定する。
 
 ## 8. トレードオフ・代替案
@@ -508,11 +508,11 @@ UIは`accuracy === null`を白、それ以外を赤→黄緑の色関数へ渡�
 | normalized値を保存 | 判定時だけ計算 | 一覧検索・重複判定の将来利用と一貫性。ただし正規化version変更時の再計算が必要 |
 | 問題1件ずつ取得 | test_sessionsを先に導入 | 出題数・終了画面が未決。採用決定までschemaを増やさない |
 | AIを最後のfallback | 全回答をAI判定 | 費用・遅延・誤判定を減らし、決定的な一致を優先 |
-| provider port | Workers AI直結 | 品質・料金・model変更に備える。MVPでadapterは1つだけ実装 |
+| provider port | 翻訳SDKをUIへ直結 | 品質・料金・provider変更に備える。MVPの翻訳adapterはDeepL 1つ |
 
 ## 9. 設計思想からの逸脱
 
-T08時点の意図的な限定:
+T17時点の意図的な限定:
 
 - `/api/v1` の mutation は Origin を `BETTER_AUTH_URL` と照合する。Better Auth `/api/auth/*` は従来どおり `trustedOrigins`。
 - 公開DELETEはT07で適用済み。履歴もCASCADEで消える。確認操作なしではDELETEを送らない。
@@ -525,7 +525,8 @@ T08時点の意図的な限定:
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
-- 通常CIはWorkers AIをlive callしない。POC-06の品質確認はpreviewの人手作業。
+- 通常CIはDeepLをlive callしない。POC-06の品質確認はpreviewの人手作業。
+- Workers AI bindingは残すが翻訳では使わない。T12まで `env.AI.run` を呼ばない。
 
 ## 10. 未決事項
 
@@ -533,7 +534,7 @@ T08時点の意図的な限定:
 - 特にOQ-003（AI障害）は履歴一貫性、OQ-005（出題数）はtest session要否へ直結する。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Google previewは人間がOAuth clientと `.dev.vars` を設定して確認する。
-- T08: 翻訳のlive Workers AI品質確認（POC-06）は人間がpreviewで行う。
+- T08: 翻訳UI/APIは実装済み。live品質はWorkers AIでは不足したためT17でDeepLへ差し替える。previewでのDeepL確認は人間が `DEEPL_AUTH_KEY` を設定して行う。
 
 ## 11. 更新履歴
 
@@ -549,3 +550,4 @@ T08時点の意図的な限定:
 - 2026-08-22 T16で重複拒否を実装。事前照合とUNIQUE違反の両方を409へ揃え、`existingWordId` は所有者scopeに限ることをtestで固定。逸脱節をT16時点へ更新
 - 2026-08-22 T07で公開DELETEとCASCADEを実装。204をfetch-jsonで本文なし成功とし、一覧は2段階確認のうえ取り直す。逸脱節をT07時点へ更新
 - 2026-08-22 T08で翻訳候補APIとWorkers AI adapterを実装。OQ-001/015の決定を反映。逸脱節をT08時点へ更新
+- 2026-08-23 T17で翻訳adapterをDeepL API Freeへ差し替え。OQ-001再決定。逸脱節をT17時点へ更新

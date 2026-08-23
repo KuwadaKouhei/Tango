@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T07マージ済み。T08 PR中（feature/T08-translation）。人間review/merge後に次タスクへ進む。**
+> 状態: **T08マージ済み。T17 PR中（feature/T17-deepl-translation）。人間review/merge後に次タスクへ進む。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -26,7 +26,8 @@
 | T06 | 単語・意味・ヒント編集 | AC-002,003 | T04,T05 | OQ-008,018 | `feature/T06-word-edit` | ✅マージ済み |
 | T16 | 単語の重複登録禁止 | AC-012 | T04,T06 | OQ-008（決定済み） | `feature/T16-word-duplicate` | ✅マージ済み |
 | T07 | 単語削除 | AC-003,013 | T06 | OQ-009（決定済み） | `feature/T07-word-delete` | ✅マージ済み |
-| T08 | 翻訳候補による登録補助 | AC-004 | T04 | OQ-001,015（決定済み） | `feature/T08-translation` | 🟡PR中 |
+| T08 | 翻訳候補による登録補助 | AC-004 | T04 | OQ-001,015（決定済み） | `feature/T08-translation` | ✅マージ済み |
+| T17 | 翻訳providerをDeepLへ切り替え | AC-004 | T08 | OQ-001再決定 | `feature/T17-deepl-translation` | 🟡PR中 |
 | T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | **OQ-005必須** | `feature/T09-random-study` | ⬜未着手 |
 | T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | **OQ-004,018必須** | `feature/T10-local-judgement` | ⬜未着手 |
 | T11 | 苦手優先出題 | AC-005 | T10 | **OQ-006,012必須** | `feature/T11-weak-study` | ⬜未着手 |
@@ -154,7 +155,7 @@
 
 完了条件:
 
-- OQ-001/015は2026-08-22に決定済み（Workers AI `@cf/meta/m2m100-1.2b`、候補1件、term 100文字、10回/60秒、Workers Free）。
+- OQ-001/015は2026-08-22に決定済み（当初Workers AI `@cf/meta/m2m100-1.2b`）。2026-08-23にDeepL API Freeへ再決定（T17）。
 - POC-06のlive品質比較は通常CI対象外。previewでの人手確認を残す。
 - 翻訳だけではwords/meaningsへ一切書き込まない。
 - 候補をフォームへ反映し、編集・削除・追加入力できる。
@@ -162,6 +163,20 @@
 - rate limitと入力上限を適用する。
 
 必須検証: AC-004、provider contract、DB未更新、error/retry UX。
+
+### T17 翻訳providerをDeepLへ切り替え
+
+概要: previewでWorkers AI翻訳の品質が不足したため、OQ-001を再決定しDeepL API Freeへ差し替える。
+
+完了条件:
+
+- `TranslationService` portと `POST /api/v1/translation-candidates` の形は維持する。
+- adapterは `fetch` + Zod。公式SDKはWorkers向けに入れない。
+- secret名は `DEEPL_AUTH_KEY`。値はGit・log・公開errorへ出さない。認証は `Authorization` headerのみ。
+- 候補1件、term 100文字、timeout 8秒、10回/60秒は維持する。
+- 通常CIはDeepLをlive callしない。Workers AI bindingは翻訳から外し、T12用に残す。
+
+必須検証: AC-004、DeepL contract（成功/502/503/429/456）、auth header、DB未更新。
 
 ### T09 テスト設定・ランダム出題・ヒント表示
 
@@ -268,7 +283,7 @@
 | AC-003 | T02,T03,T04〜T07 | T15 isolation suite |
 | AC-012 | T16 | T15 integration |
 | AC-013 | T07 | T15 E2E |
-| AC-004 | T08 | T15 E2E/contract |
+| AC-004 | T08, T17 | T15 E2E/contract |
 | AC-005 | T09,T11,T13 | T15 E2E |
 | AC-006 | T04,T09 | T15 E2E |
 | AC-007 | T10 | T15 integration |
@@ -306,3 +321,4 @@ T16の重複禁止はOQ-010の「重複警告」とは別物である。T16は�
 - 2026-08-22 T16をマージ済み、T07を作業中へ更新
 - 2026-08-22 T07をPR中へ更新。`0003_clean_the_executioner` で CASCADE を適用し公開DELETEを出した
 - 2026-08-22 T07をマージ済み、T08をPR中へ更新。OQ-001/015を決定済みとして翻訳候補を実装
+- 2026-08-22 T08をマージ済み。2026-08-23 T17をPR中へ更新。OQ-001をDeepL API Freeへ再決定

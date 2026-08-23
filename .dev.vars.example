@@ -6,3 +6,6 @@ BETTER_AUTH_SECRET=replace-me
 BETTER_AUTH_URL=http://localhost:3000
 GOOGLE_CLIENT_ID=replace-me
 GOOGLE_CLIENT_SECRET=replace-me
+# DeepL API Free。値はチャットやGitへ貼らない。
+# https://www.deepl.com/your-account/keys
+DEEPL_AUTH_KEY=replace-me

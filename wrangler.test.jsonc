@@ -19,5 +19,6 @@
     "BETTER_AUTH_SECRET": "test-better-auth-secret-32chars!!",
     "GOOGLE_CLIENT_ID": "test-google-client-id",
     "GOOGLE_CLIENT_SECRET": "test-google-client-secret",
+    "DEEPL_AUTH_KEY": "test-deepl-auth-key-not-used",
   },
 }

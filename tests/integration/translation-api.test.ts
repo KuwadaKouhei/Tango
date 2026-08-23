@@ -127,8 +127,8 @@ describe('POST /api/v1/translation-candidates', () => {
     expect(response.status).toBe(200)
     expect(body).toEqual({
       candidates: [{ text: '問題' }],
-      provider: 'workers-ai',
-      model: '@cf/meta/m2m100-1.2b',
+      provider: 'deepl',
+      model: 'deepl-translate',
     })
     expect(await countWords()).toBe(wordsBefore)
     expect(await countMeanings()).toBe(meaningsBefore)

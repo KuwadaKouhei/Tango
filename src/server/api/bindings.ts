@@ -5,6 +5,7 @@ export type AuthBindings = {
   BETTER_AUTH_URL: string
   GOOGLE_CLIENT_ID: string
   GOOGLE_CLIENT_SECRET: string
+  DEEPL_AUTH_KEY: string
 }
 
 export const readRequiredBinding = (
