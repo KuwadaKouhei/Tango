@@ -31,6 +31,8 @@ export const createSignedInApi = (
     timeoutMs?: number
     random?: RandomSource
     semanticJudge?: SemanticJudge
+    aiJudgeRateLimiter?: SlidingWindowRateLimiter
+    aiJudgeTimeoutMs?: number
   } = {},
 ) => {
   const app = new Hono<SignedInApiEnv>()
@@ -46,7 +48,10 @@ export const createSignedInApi = (
   })
   privateV1.route('/', createWordRoutes())
   privateV1.route('/', createTranslationRoutes(deps))
-  privateV1.route('/', createStudyRoutes(deps))
+  privateV1.route('/', createStudyRoutes({
+    ...deps,
+    semanticJudge: deps.semanticJudge ?? null,
+  }))
   app.route('/api/v1', privateV1)
 
   return app

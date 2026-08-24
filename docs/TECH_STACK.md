@@ -28,7 +28,7 @@
 | DB | Cloudflare D1 | 要件指定、Workers binding、SQLite互換RDB、FK |
 | ORM/migration | Drizzle ORM + Drizzle Kit | D1公式対応、TypeScript schema、SQLを隠し過ぎない |
 | 認証 | Better Auth + Google OAuth | 要件指定、Google social provider、D1/Drizzle対応 |
-| AI/翻訳 | port + DeepL（翻訳）+ Workers AI（判定） | 翻訳はDeepL API Free。判定modelはPOC-05でlock |
+| AI/翻訳 | port + DeepL（翻訳）+ Workers AI（判定） | 翻訳はDeepL API Free。判定modelは `@cf/meta/llama-3.1-8b-instruct-fast` |
 | build/deploy | Vite + Cloudflare Vite plugin + Wrangler | TanStack Start公式Cloudflare手順 |
 | package manager | pnpm | lockfile、厳格な依存、workspace拡張余地 |
 | unit/integration | Vitest + Workers Vitest integration | Workers runtimeとD1 migrationをローカル検証 |
@@ -135,14 +135,14 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 | 候補 | 統合 | 品質/機能 | ロックイン | 判定 |
 |---|---|---|---|---|
 | Workers AI `@cf/meta/m2m100-1.2b` | bindingで低運用 | 単語帳の意味候補としては品質不足 | Cloudflare model ID | 翻訳は不採用 |
-| Workers AI 生成モデル | bindingで低運用 | 意味一致の yes/no 判定 | Cloudflare model ID | **AI判定の提供者（OQ-002）。model IDはPOC-05でlock** |
+| Workers AI 生成モデル | bindingで低運用 | 意味一致の yes/no 判定 | `@cf/meta/llama-3.1-8b-instruct-fast` | **AI判定の提供者（OQ-002）。JSON Mode 対応 instruct。T12でlock** |
 | DeepL API Free | 外部HTTP + secret | EN→JAの短文に強い。月50万文字 | 外部API/料金 | **翻訳で採用（OQ-001再決定）** |
 | Google Translation | 翻訳API | 成熟 | GCP追加 | 翻訳の交換候補 |
 | 外部LLM API | AI判定品質を選べる | model/料金/データ取扱差 | provider依存 | AI比較候補 |
 
-採用理由: `TranslationService` / `SemanticJudge` portは交換境界として残す。翻訳adapterはDeepL API Free（OQ-001、2026-08-23）。公式SDKは入れず `fetch` する。AI判定の提供者はWorkers AI（OQ-002）。model IDはT12のPOC-05で固定する。
+採用理由: `TranslationService` / `SemanticJudge` portは交換境界として残す。翻訳adapterはDeepL API Free（OQ-001、2026-08-23）。公式SDKは入れず `fetch` する。AI判定の提供者はWorkers AI（OQ-002）。model は `@cf/meta/llama-3.1-8b-instruct-fast`（公式 JSON Mode、8B instruct）。prompt version は `tango-judge-v1`。
 
-出典: [DeepL Auth](https://developers.deepl.com/docs/getting-started/auth)、[Translate API](https://developers.deepl.com/docs/api-reference/translate)、[Usage limits](https://developers.deepl.com/docs/resources/usage-limits)、[Workers AI](https://developers.cloudflare.com/workers-ai/)
+出典: [DeepL Auth](https://developers.deepl.com/docs/getting-started/auth)、[Translate API](https://developers.deepl.com/docs/api-reference/translate)、[Usage limits](https://developers.deepl.com/docs/resources/usage-limits)、[Workers AI](https://developers.cloudflare.com/workers-ai/)、[JSON Mode](https://developers.cloudflare.com/workers-ai/features/json-mode/)
 
 ### 4.6 テスト
 
@@ -193,3 +193,4 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 - 2026-08-22 T08で翻訳providerを Workers AI `@cf/meta/m2m100-1.2b` に固定（OQ-001）。プランはWorkers Free（OQ-015）
 - 2026-08-23 T17で翻訳providerを DeepL API Free に再固定（OQ-001）。secret名は `DEEPL_AUTH_KEY`
 - 2026-08-23 OQ-002決定。AI判定の提供者はWorkers AI。model IDはT12 POC-05でlock
+- 2026-08-24 T12で判定modelを `@cf/meta/llama-3.1-8b-instruct-fast` にlock。prompt version は `tango-judge-v1`

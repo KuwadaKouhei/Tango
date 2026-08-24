@@ -389,7 +389,7 @@ POST /api/v1/study/answers
 }
 ```
 
-serverは`wordId`をsession userで再取得し、クライアントから意味・正誤・judgeTypeを受け取らない。AI障害時（timeout / 429 / 5xx / 契約外JSON）は履歴を保存せず `503 AI_JUDGE_UNAVAILABLE` を返す（OQ-003）。クライアントは同じ回答を再試行できる。
+serverは`wordId`をsession userで再取得し、クライアントから意味・正誤・judgeTypeを受け取らない。AI障害時（timeout / provider 429 / 5xx / 契約外JSON）は履歴を保存せず `503 AI_JUDGE_UNAVAILABLE` を返す（OQ-003）。アプリの isolate 内 10回/60秒超過は `429 RATE_LIMITED`。クライアントは同じ回答を再試行できる。翻訳の schema 不正は `502` だが、AI判定の schema 不正は未採点のまま `503` とする。
 
 ## 6. 主要処理フロー
 
@@ -435,7 +435,7 @@ session.user.id + wordIdで単語と全意味を取得
                   yes -> normalized / correct
                   no  -> SemanticJudgeをtimeout付きで1回呼ぶ
                         -> 失敗なら履歴を書かず 503
-                        -> response schemaを検証
+                        -> JSON Mode + Zod で `{ isCorrect: boolean }` を検証
                         -> ai / providerのboolean結果
   -> test_resultを1件保存
   -> 登録意味と透明性情報を返す
@@ -549,14 +549,16 @@ T10時点の意図的な限定:
 - 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
 - カード色の補間はOQ-007。実装はT14。一覧は未回答と正解率を文字でも示す。
 - T09は出題とヒントまで。回答の判定APIはT10で追加した。苦手優先の抽選はT11で追加した。
-- T10のlocal不一致は、DBの `judge_type` が `exact|normalized|ai` しか置けないため `normalized` + `isCorrect:false` で保存する。第4のenumは作らない。T13は `!isCorrect && !judgedByAi` を「一致しませんでした」と見せる。T12が不一致を保存前にAIへ送る。
-- T10は `SemanticJudge` を注入しない。exact/normalizedで決着したらAIを呼ばない。不一致でもT10ではAI 0回。
-- T10の結果UIは正誤・判定段階・登録意味と次問まで。終了結果の集計画面はT13。
+- T10のlocal不一致は、DBの `judge_type` が `exact|normalized|ai` しか置けないため、AI portが無いときだけ `normalized` + `isCorrect:false` で保存する。第4のenumは作らない。T13は `!isCorrect && !judgedByAi` を「一致しませんでした」と見せる。
+- 本番の `POST /api/v1/study/answers` は `SemanticJudge` を注入する。exact/normalizedで決着したらAIを呼ばない。不一致時だけ最大1回。通常CIの signed-in harness は live binding を避けるため `null` または mock を渡す。
+- T10の結果UIは正誤・判定段階・登録意味と次問まで。AI利用は `judgedByAi` から「AI判定で正解/不正解」と出す。終了結果の集計画面はT13。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
 - 通常CIはDeepLをlive callしない。POC-06の品質確認は2026-08-23に配備Workerで人手実施済み。
-- Workers AI bindingは翻訳では使わない。T12で `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDはPOC-05でlockする。
+- 通常CIはWorkers AIをlive callしない。POC-05の固定評価セットはcontract mock。live品質は配備Workerでの人手確認（未実施）。
+- Workers AI bindingは翻訳では使わない。T12の `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDは `@cf/meta/llama-3.1-8b-instruct-fast`。prompt versionは `tango-judge-v1`。
+- wrangler 生成の `AiModels` はこの model ID をまだ含まないため、composition-rootは狭い `run` 口へ委譲する。`wrangler.test.jsonc` には `ai` binding を足さない。
 
 ## 10. 未決事項
 
@@ -564,7 +566,7 @@ T10時点の意図的な限定:
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Googleは2026-08-23に配備Workerで確認済み。
 - T08/T17: 翻訳はDeepL API Free。POC-06のlive確認は2026-08-23に配備Workerで実施済み。
-- T12: Workers AIの具体model IDはPOC-05の固定評価セットでlockする。
+- T12: Workers AI の model ID は `@cf/meta/llama-3.1-8b-instruct-fast` にlock。POC-05 live品質は未実施。
 
 ## 11. 更新履歴
 
@@ -586,4 +588,5 @@ T10時点の意図的な限定:
 - 2026-08-23 T09で `POST /api/v1/study/questions` と hint GET を実装。`weak` は422。回答判定はT10
 - 2026-08-23 T10で `POST /api/v1/study/answers` と local判定を実装。AI adapterはT12。local missの `judge_type` は逸脱節を参照
 - 2026-08-24 T11で `weak` の OQ-006 重み付き抽選を実装。random の一様抽選は変えない
+- 2026-08-24 T12で Workers AI JSON Mode の意味判定を結線。model は `@cf/meta/llama-3.1-8b-instruct-fast`。契約外JSONは503
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新

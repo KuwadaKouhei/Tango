@@ -1,5 +1,5 @@
 /**
- * T12でWorkers AI adapterを結線するport。T10では注入しない。
+ * Workers AI adapter を結線する port。
  * 呼び出し側は英単語・登録意味・回答だけを渡す。
  */
 export type SemanticJudgeInput = {
@@ -16,5 +16,8 @@ export type SemanticJudgeResult = {
 }
 
 export type SemanticJudge = {
-  judge: (input: SemanticJudgeInput) => Promise<SemanticJudgeResult>
+  judge: (
+    input: SemanticJudgeInput,
+    signal: AbortSignal,
+  ) => Promise<SemanticJudgeResult>
 }

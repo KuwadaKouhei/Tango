@@ -15,6 +15,7 @@ export const createSlidingWindowRateLimiter = (input: {
   limit: number
   windowMs: number
   clock: Clock
+  message?: string
 }): SlidingWindowRateLimiter => {
   const timestampsByKey = new Map<string, number[]>()
 
@@ -30,7 +31,10 @@ export const createSlidingWindowRateLimiter = (input: {
         const oldest = recent[0]
         const retryAfterMs =
           oldest === undefined ? input.windowMs : oldest + input.windowMs - now
-        throw AppError.rateLimited(Math.max(1, Math.ceil(retryAfterMs / 1000)))
+        throw AppError.rateLimited(
+          Math.max(1, Math.ceil(retryAfterMs / 1000)),
+          input.message,
+        )
       }
 
       recent.push(now)

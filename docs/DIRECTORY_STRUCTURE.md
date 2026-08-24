@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T11で苦手優先出題の重み付き抽選を追加済み**
+> 状態: **T12でWorkers AI意味判定adapterと固定評価セットを追加済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -106,6 +106,8 @@ Tango/
 │   │   │   │   ├── normalize-for-judgement.ts
 │   │   │   │   ├── answer-judge.ts
 │   │   │   │   ├── prepare-answer.ts
+│   │   │   │   ├── ai-judge-limits.ts
+│   │   │   │   ├── ai-judge-prompt.ts
 │   │   │   │   └── semantic-judge.ts
 │   │   │   ├── application/
 │   │   │   │   ├── get-hint.ts
@@ -144,7 +146,7 @@ Tango/
 │   │   │       ├── d1-word-repository.ts
 │   │   │       └── d1-test-result-repository.ts
 │   │   ├── semantic-judge/
-│   │   │   └── workers-ai-semantic-judge.ts  # T12。T10では作らない
+│   │   │   └── workers-ai-semantic-judge.ts
 │   │   └── translation/
 │   │       └── deepl-translation-service.ts
 │   ├── platform/
@@ -202,6 +204,8 @@ Tango/
 │   ├── contract/
 │   │   ├── semantic-judge.contract.test.ts
 │   │   └── translation.contract.test.ts
+│   ├── eval/
+│   │   └── ai-judge.eval.test.ts      # POC-05固定評価セット。live callしない
 │   ├── e2e/
 │   │   ├── auth.setup.ts
 │   │   ├── word-learning.spec.ts
@@ -252,6 +256,7 @@ Tango/
 | `src/components` | 2つ以上のfeatureで実利用するUI primitive | 1画面専用component |
 | `tests/integration` | Worker/Hono/D1を跨ぐ振る舞い | pure functionの細粒度case |
 | `tests/contract` | 外部provider portの契約 | live providerを通常CIで呼ぶテスト |
+| `tests/eval` | AI判定の固定評価セット | live Workers AI を通常CIの合否へ使う |
 | `tests/e2e` | 主要ユーザー動線 | 全組合せ、細部のunit検証 |
 
 ## 4. 命名・可読性規約
@@ -328,7 +333,7 @@ composition-root -> application + infrastructure
 - T01で確定したscaffold差: aliasは `#/*`、CSSは `src/styles.css`、Prettier設定は `prettier.config.js`、Start middleware用 `src/start.ts` は未生成（必要になったタスクで追加）。
 - T02で確定: Drizzle KitのSQLは `drizzle/` 直下（`drizzle/migrations/` ではない）。secret型は `src/env.d.ts` で Cloudflare.Env へ mergeする。
 - AI/翻訳providerがWorkers bindingでなくHTTP APIの場合も、adapter配置は変えない。
-- T10で `features/study/domain/normalize-for-judgement.ts` を追加した。保存用 normalize とは分ける。`SemanticJudge` portはT10で型と呼び出し点だけ用意し、Workers AI adapterはT12。
+- T10で `features/study/domain/normalize-for-judgement.ts` を追加した。保存用 normalize とは分ける。`SemanticJudge` portはT10で型と呼び出し点を用意し、Workers AI adapterはT12で追加した。
 
 ## 10. 参照
 
@@ -356,3 +361,4 @@ composition-root -> application + infrastructure
 - 2026-08-23 T09で study feature、`/study`、`/study/session`、study-api test を追加。判定と苦手抽選のfileはT10/T11
 - 2026-08-23 T10で判定用normalize、answer API、history/public.ts、セッション回答UIを追加。T12 adapterは未作成
 - 2026-08-24 T11で weakness-weight と重み付き抽選を追加。苦手候補queryは words LEFT JOIN test_results
+- 2026-08-24 T12で Workers AI semantic judge adapter、ai-judge-limits/prompt、contract/eval test を追加

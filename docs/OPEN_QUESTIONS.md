@@ -7,7 +7,7 @@
 | ID | 論点 | 主な選択肢 | 決定期限 | 状態 |
 |---|---|---|---|---|
 | OQ-001 | 翻訳プロバイダー、モデル、候補件数、料金上限 | Workers AI / DeepL / Google Translation / その他 | T08着手前 | 決定済み（DeepL API Free / 候補1件） |
-| OQ-002 | AI判定プロバイダー、モデル、プロンプト、再試行、タイムアウト | Workers AIを含む交換可能な候補 | T11着手前 | 決定済み（Workers AI。model IDはT12 POC-05でlock） |
+| OQ-002 | AI判定プロバイダー、モデル、プロンプト、再試行、タイムアウト | Workers AIを含む交換可能な候補 | T11着手前 | 決定済み（Workers AI。model は `@cf/meta/llama-3.1-8b-instruct-fast`） |
 | OQ-003 | AI障害時の回答扱い | 未採点で再試行 / 不正解として保存 / AIなしで不正解 | T11着手前 | 決定済み（未採点・履歴非保存・再試行） |
 | OQ-004 | 正規化の追加範囲 | 句読点・記号・かなカナ・長音・表記ゆれ | T09着手前 | 決定済み（重複判定は現状。判定のみ句読点+かなカナ） |
 | OQ-005 | テスト出題数・既定値・同一テスト内重複 | 1問ずつ継続 / 固定件数 / 選択式、重複可否 | T10着手前 | 決定済み（開始時に5/10/20/全部、既定10、同一テスト内重複なし） |
@@ -193,7 +193,7 @@ AI意味判定の提供者は **Workers AI**。利用者決定。翻訳（DeepL�
 | 項目 | 確定値 |
 |---|---|
 | provider | Workers AI（binding `AI`） |
-| model ID | **T12のPOC-05でlockする**。指示追従と構造化出力ができる生成モデルから選ぶ |
+| model ID | **`@cf/meta/llama-3.1-8b-instruct-fast`**。公式 JSON Mode 対応の instruct。Workers Free と 8 秒 timeout に合わせ 8B を選んだ。live 品質は POC-05 人手確認 |
 | 入力 | 英単語、登録意味、回答のみ。profile / session / OAuth / hint / 履歴は送らない |
 | 出力 | boolean の意味一致。Zodで検証する |
 | timeout | 8秒（wall clock、AbortSignal） |
@@ -201,7 +201,7 @@ AI意味判定の提供者は **Workers AI**。利用者決定。翻訳（DeepL�
 | rate limit | 認証ユーザーあたり 10回 / 60秒。翻訳とは別カウンタ。isolate内スライディングウィンドウ |
 | CI | 通常CIは live call しない。contract mock と固定評価セット |
 
-prompt本文と `prompt_version` はT12で固定し、AI結果行へ保存する。品質が不足したらportのままadapterを差し替える。
+prompt本文と `prompt_version`（`tango-judge-v1`）はT12で固定し、AI結果行へ保存する。品質が不足したらportのままadapterを差し替える。
 
 ### OQ-003（2026-08-23）
 
@@ -228,7 +228,7 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 
 - Paid専用のRate Limiting bindingやUnbound CPU前提の処理をMVPへ入れない。
 - 翻訳はDeepL API Freeの文字数枠で使う。入力長・timeout・ユーザー単位rate limitで消費を抑える。
-- Workers AIのneuron枠はT12のAI判定まで使わない。
+- Workers AIのneuron枠はAI判定で使う。model は `@cf/meta/llama-3.1-8b-instruct-fast`。通常CIは live call しない。
 - D1 Freeの容量上限は従来どおり。規模目標はOQ-012が未決のまま。
 
 ## 4. 更新手順
@@ -251,3 +251,4 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 - 2026-08-23 OQ-001をDeepL API Freeへ再決定。候補1件・入力100文字・timeout/rate limitは維持
 - 2026-08-23 OQ-002/003/004/005/006/007/010を決定済みへ更新。検索と終了結果をMVPへ含め、間違い再テスト・重複誘導・AI手動修正はMVP外
 - 2026-08-23 POC-06のDeepL live確認を配備Workerで実施済みと記録
+- 2026-08-24 T12で OQ-002 の model ID を `@cf/meta/llama-3.1-8b-instruct-fast` にlock。POC-05 liveは未実施

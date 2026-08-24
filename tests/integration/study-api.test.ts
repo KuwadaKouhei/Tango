@@ -6,8 +6,10 @@ import { createWord } from '../../src/features/words/application/manage-word'
 import { createDb } from '../../src/infrastructure/db/drizzle'
 import { buildOwnedWeakQuestionQuery } from '../../src/infrastructure/db/repositories/d1-word-repository'
 import { createOpaqueId } from '../../src/platform/ids'
+import { AppError } from '../../src/platform/app-error'
 import type { RandomSource } from '../../src/platform/random'
 import { createAppServices } from '../../src/server/composition-root'
+import { createSlidingWindowRateLimiter } from '../../src/server/api/middleware/rate-limit'
 import { createSignedInApi } from '../setup/signed-in-api'
 import { insertTestUser } from '../setup/test-builders'
 
@@ -105,18 +107,25 @@ const callAnswers = async (input: {
   body: unknown
   origin?: string
   semanticJudge?: SemanticJudge
+  aiJudgeRateLimiter?: ReturnType<typeof createSlidingWindowRateLimiter>
+  aiJudgeTimeoutMs?: number
 }) => {
   const headers = new Headers({
     origin: input.origin ?? env.BETTER_AUTH_URL,
     'content-type': 'application/json',
   })
 
-  return createSignedInApi(
-    input.actorUserId,
-    input.semanticJudge === undefined
+  return createSignedInApi(input.actorUserId, {
+    ...(input.semanticJudge === undefined
       ? {}
-      : { semanticJudge: input.semanticJudge },
-  ).fetch(
+      : { semanticJudge: input.semanticJudge }),
+    ...(input.aiJudgeRateLimiter === undefined
+      ? {}
+      : { aiJudgeRateLimiter: input.aiJudgeRateLimiter }),
+    ...(input.aiJudgeTimeoutMs === undefined
+      ? {}
+      : { aiJudgeTimeoutMs: input.aiJudgeTimeoutMs }),
+  }).fetch(
     new Request(`${API_BASE}/api/v1/study/answers`, {
       method: 'POST',
       headers,
@@ -558,31 +567,50 @@ describe('POST /api/v1/study/answers', () => {
     })
   })
 
-  it('長音の有無だけでは不正解にし、T10ではAIなしで0%として残る', async () => {
-    await insertTestUser(env.DB, 'answer-miss')
+  it('長音のゆれはlocal不一致のあとAI判定し、成功ならaiで保存する', async () => {
+    await insertTestUser(env.DB, 'answer-ai-hit')
     const word = await seedWord({
-      actorUserId: 'answer-miss',
+      actorUserId: 'answer-ai-hit',
       term: 'computer',
       meanings: ['コンピュータ'],
       hint: null,
     })
+    let judgeCalls = 0
+    const semanticJudge: SemanticJudge = {
+      judge: async (payload) => {
+        judgeCalls += 1
+        expect(payload).toEqual({
+          term: 'computer',
+          answer: 'コンピューター',
+          meanings: ['コンピュータ'],
+        })
+        return {
+          isCorrect: true,
+          provider: 'workers-ai',
+          model: '@cf/meta/llama-3.1-8b-instruct-fast',
+          promptVersion: 'tango-judge-v1',
+        }
+      },
+    }
 
     const response = await callAnswers({
-      actorUserId: 'answer-miss',
+      actorUserId: 'answer-ai-hit',
+      semanticJudge,
       body: { wordId: word.id, answer: 'コンピューター', hintUsed: false },
     })
     const body: unknown = await response.json()
     expect(response.status).toBe(201)
+    expect(judgeCalls).toBe(1)
     expect(body).toMatchObject({
       result: {
-        isCorrect: false,
-        judgeType: 'normalized',
-        judgedByAi: false,
+        isCorrect: true,
+        judgeType: 'ai',
+        judgedByAi: true,
         meanings: ['コンピュータ'],
       },
     })
 
-    const listed = await callListWords('answer-miss')
+    const listed = await callListWords('answer-ai-hit')
     const listBody: unknown = await listed.json()
     expect(listBody).toMatchObject({
       items: [
@@ -590,13 +618,123 @@ describe('POST /api/v1/study/answers', () => {
           id: word.id,
           stats: {
             status: 'answered',
-            correct: 0,
+            correct: 1,
             total: 1,
-            accuracy: 0,
+            accuracy: 1,
           },
         },
       ],
     })
+  })
+
+  it('AI判定の503では履歴を書かず未採点のままにする', async () => {
+    await insertTestUser(env.DB, 'answer-ai-503')
+    const word = await seedWord({
+      actorUserId: 'answer-ai-503',
+      term: 'issue',
+      meanings: ['問題'],
+      hint: null,
+    })
+
+    const response = await callAnswers({
+      actorUserId: 'answer-ai-503',
+      semanticJudge: {
+        judge: async () => {
+          throw AppError.aiJudgeUnavailable()
+        },
+      },
+      body: { wordId: word.id, answer: '全然違う', hintUsed: false },
+    })
+    const body: unknown = await response.json()
+    expect(response.status).toBe(503)
+    expect(body).toMatchObject({
+      error: { code: 'AI_JUDGE_UNAVAILABLE' },
+    })
+    expect(JSON.stringify(body)).not.toMatch(/全然違う|問題|prompt/u)
+
+    const listed = await callListWords('answer-ai-503')
+    expect(await listed.json()).toMatchObject({
+      items: [{ id: word.id, stats: { status: 'unanswered', total: 0 } }],
+    })
+  })
+
+  it('timeoutは503で履歴を残さない', async () => {
+    await insertTestUser(env.DB, 'answer-ai-timeout')
+    const word = await seedWord({
+      actorUserId: 'answer-ai-timeout',
+      term: 'issue',
+      meanings: ['問題'],
+      hint: null,
+    })
+
+    const response = await callAnswers({
+      actorUserId: 'answer-ai-timeout',
+      aiJudgeTimeoutMs: 20,
+      semanticJudge: {
+        judge: () =>
+          new Promise(() => {
+            // 応答しない。AbortSignal.timeout で503にする。
+          }),
+      },
+      body: { wordId: word.id, answer: '全然違う', hintUsed: false },
+    })
+    const body: unknown = await response.json()
+    expect(response.status).toBe(503)
+    expect(body).toMatchObject({
+      error: { code: 'AI_JUDGE_UNAVAILABLE' },
+    })
+
+    const listed = await callListWords('answer-ai-timeout')
+    expect(await listed.json()).toMatchObject({
+      items: [{ id: word.id, stats: { status: 'unanswered', total: 0 } }],
+    })
+  })
+
+  it('AI判定の11回目は429になり、翻訳カウンタとは別である', async () => {
+    await insertTestUser(env.DB, 'answer-ai-429')
+    const word = await seedWord({
+      actorUserId: 'answer-ai-429',
+      term: 'issue',
+      meanings: ['問題'],
+      hint: null,
+    })
+    const limiter = createSlidingWindowRateLimiter({
+      limit: 10,
+      windowMs: 60_000,
+      clock: { nowEpochMs: () => 1_700_000_000_000 },
+      message: 'AI判定の利用上限に達しました。しばらく待ってから再試行してください。',
+    })
+    const semanticJudge: SemanticJudge = {
+      judge: async () => ({
+        isCorrect: false,
+        provider: 'workers-ai',
+        model: 'test-model',
+        promptVersion: 'v1',
+      }),
+    }
+
+    for (let index = 0; index < 10; index += 1) {
+      const response = await callAnswers({
+        actorUserId: 'answer-ai-429',
+        semanticJudge,
+        aiJudgeRateLimiter: limiter,
+        body: { wordId: word.id, answer: '全然違う', hintUsed: false },
+      })
+      expect(response.status).toBe(201)
+    }
+
+    const limited = await callAnswers({
+      actorUserId: 'answer-ai-429',
+      semanticJudge,
+      aiJudgeRateLimiter: limiter,
+      body: { wordId: word.id, answer: '全然違う', hintUsed: false },
+    })
+    const limitedBody: unknown = await limited.json()
+    expect(limited.status).toBe(429)
+    expect(limitedBody).toMatchObject({
+      error: { code: 'RATE_LIMITED' },
+    })
+    expect(JSON.stringify(limitedBody)).toMatch(/AI判定/u)
   })
 
   it('他ユーザーの単語は404で、どちらの履歴にも残さない', async () => {

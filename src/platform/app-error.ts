@@ -85,11 +85,14 @@ export class AppError extends Error {
     return new AppError('VALIDATION_FAILED', 422, message, details)
   }
 
-  static rateLimited(retryAfterSeconds?: number): AppError {
+  static rateLimited(
+    retryAfterSeconds?: number,
+    message = '翻訳の利用上限に達しました。しばらく待ってから再試行してください。',
+  ): AppError {
     return new AppError(
       'RATE_LIMITED',
       429,
-      '翻訳の利用上限に達しました。しばらく待ってから再試行してください。',
+      message,
       retryAfterSeconds === undefined ? {} : { retryAfterSeconds },
     )
   }

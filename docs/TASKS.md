@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T10マージ済み。次はT11（苦手優先出題）。POC-03/04/06は2026-08-23に配備Workerでlive確認済み。**
+> 状態: **T11マージ済み。次はT12（AI意味判定fallback）。POC-03/04/06は2026-08-23に配備Workerでlive確認済み。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
 
 ## 1. 進め方
@@ -31,8 +31,8 @@
 | T18 | 単語一覧の検索 | AC-014 | T05 | OQ-010（決定済み） | `feature/T18-word-search` | ✅マージ済み |
 | T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | OQ-005（決定済み） | `cursor/t09-random-study-4bb7` | ✅マージ済み |
 | T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | OQ-004,018（決定済み） | `cursor/t10-local-judgement-4bb7` | ✅マージ済み |
-| T11 | 苦手優先出題 | AC-005 | T10 | OQ-006（決定済み）。OQ-012は個人規模で計測 | `cursor/t11-weak-study-4bb7` | 🟡PR中 |
-| T12 | AI意味判定fallback | AC-008,009 | T10 | OQ-002,003,015（決定済み）。model IDはPOC-05 | `feature/T12-ai-judgement` | ⬜未着手 |
+| T11 | 苦手優先出題 | AC-005 | T10 | OQ-006（決定済み）。OQ-012は個人規模で計測 | `cursor/t11-weak-study-4bb7` | ✅マージ済み |
+| T12 | AI意味判定fallback | AC-008,009 | T10 | OQ-002,003,015（決定済み）。model IDはPOC-05でlock | `cursor/t12-ai-judgement-4bb7` | 🟡PR中 |
 | T13 | 回答結果・次問題・テスト終了 | AC-005〜009,015 | T09,T10,T12 | OQ-005,010（決定済み） | `feature/T13-answer-result` | ⬜未着手 |
 | T14 | 正解率カード色とアクセシビリティ | AC-010,011 | T10,T11 | OQ-007（決定済み） | `feature/T14-mastery-visuals` | ⬜未着手 |
 | T15 | CI・E2E・preview release gate | AC-001〜015 | T02〜T14,T18 | OQ-012,017 | `feature/T15-release-gate` | ⬜未着手 |
@@ -242,10 +242,10 @@
 
 完了条件:
 
-- 提供者はWorkers AI（OQ-002）。POC-05の固定評価セットで model ID をlockする。
-- exact/normalized時はAI 0回、不一致時だけ最大1回。timeout 8秒、自動retryなし、10回/60秒。
+- 提供者はWorkers AI（OQ-002）。model IDは `@cf/meta/llama-3.1-8b-instruct-fast`（公式 JSON Mode 対応 instruct。POC-05コード側でlock。live品質は配備Workerでの人手確認）。
+- exact/normalized時はAI 0回、不一致時だけ最大1回。timeout 8秒、自動retryなし、10回/60秒。翻訳とは別カウンタ。
 - provider responseをZod検証し、model/prompt versionをAI結果へ保存する。
-- timeout/429/5xx/schema不正は履歴非保存の `503 AI_JUDGE_UNAVAILABLE`（OQ-003）。
+- timeout/provider 429/5xx/schema不正は履歴非保存の `503 AI_JUDGE_UNAVAILABLE`（OQ-003）。アプリの10回超過は `429 RATE_LIMITED`。
 - AI利用を結果画面で明示する。通常CIは live call しない。
 
 必須検証: AC-008/009、固定評価セット、contract test、rate limit、秘密/本文logなし。
@@ -353,3 +353,5 @@ OQ-010のうち重複誘導UI、間違い再テスト、AI手動修正は未採�
 - 2026-08-23 T10をPR中へ更新
 - 2026-08-24 T10をマージ済みへ更新。T11を作業中へ更新
 - 2026-08-24 T11をPR中へ更新
+- 2026-08-24 T11をマージ済みへ更新。T12を作業中へ更新。model を `@cf/meta/llama-3.1-8b-instruct-fast` にlock
+- 2026-08-24 T12をPR中へ更新
