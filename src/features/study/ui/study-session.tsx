@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import type { StudyAnswerResult } from '../api/study-schemas'
+import type { StudyAnswerResult as StudyAnswerPayload } from '../api/study-schemas'
 import { resolvePlannedCount } from '../domain/planned-count'
 import type { StudySessionItem } from '../domain/summarize-study-session'
 import type { StudyCountChoice, StudyMode } from '../domain/study-limits'
@@ -31,7 +31,7 @@ export function StudySession({ mode, count }: StudySessionSearch) {
   const [isHintPending, setIsHintPending] = useState(false)
   const [answerDraft, setAnswerDraft] = useState('')
   const [isAnswerPending, setIsAnswerPending] = useState(false)
-  const [lastResult, setLastResult] = useState<StudyAnswerResult | null>(null)
+  const [lastResult, setLastResult] = useState<StudyAnswerPayload | null>(null)
   const [sessionItems, setSessionItems] = useState<StudySessionItem[]>([])
   const nextActionRef = useRef<HTMLButtonElement>(null)
   const summaryHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -173,7 +173,10 @@ export function StudySession({ mode, count }: StudySessionSearch) {
 
   if (status === 'finished') {
     return (
-      <StudySessionSummary items={sessionItems} headingRef={summaryHeadingRef} />
+      <StudySessionSummary
+        items={sessionItems}
+        headingRef={summaryHeadingRef}
+      />
     )
   }
 

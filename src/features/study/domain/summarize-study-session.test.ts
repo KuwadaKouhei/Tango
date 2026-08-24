@@ -37,7 +37,9 @@ describe('summarizeStudySession', () => {
   })
 
   it('全問正解は1、全問不正解は0にする', () => {
-    expect(summarizeStudySession([item('a', true), item('b', true)])).toMatchObject({
+    expect(
+      summarizeStudySession([item('a', true), item('b', true)]),
+    ).toMatchObject({
       askedCount: 2,
       correctCount: 2,
       accuracy: 1,
