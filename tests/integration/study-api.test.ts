@@ -702,7 +702,8 @@ describe('POST /api/v1/study/answers', () => {
       limit: 10,
       windowMs: 60_000,
       clock: { nowEpochMs: () => 1_700_000_000_000 },
-      message: 'AI判定の利用上限に達しました。しばらく待ってから再試行してください。',
+      message:
+        'AI判定の利用上限に達しました。しばらく待ってから再試行してください。',
     })
     const semanticJudge: SemanticJudge = {
       judge: async () => ({

@@ -59,10 +59,10 @@ const mapRunFailure = (error: unknown): AppError => {
 
 const extractPayload = (raw: unknown): unknown => {
   if (raw !== null && typeof raw === 'object' && 'response' in raw) {
-    const response = (raw as { response: unknown }).response
+    const response = raw.response
     if (typeof response === 'string') {
       try {
-        return JSON.parse(response) as unknown
+        return JSON.parse(response)
       } catch (cause) {
         throw AppError.aiJudgeUnavailable(cause)
       }

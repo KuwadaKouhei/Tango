@@ -5,7 +5,7 @@ import type { JudgeType, TestResultRepository } from '../../history/public'
 import type { WordRepository } from '../../words/public'
 import { judgeAnswerLocally } from '../domain/answer-judge'
 import { requirePreparedAnswer } from '../domain/prepare-answer'
-import type { SemanticJudge, SemanticJudgeResult } from '../domain/semantic-judge'
+import type { SemanticJudge } from '../domain/semantic-judge'
 
 const rejectWhenAborted = (signal: AbortSignal): Promise<never> =>
   new Promise((_resolve, reject) => {
@@ -99,9 +99,8 @@ const resolveJudgement = async (input: {
     return localMissWithoutAi()
   }
 
-  let ai: SemanticJudgeResult
   try {
-    ai = await Promise.race([
+    const ai = await Promise.race([
       input.semanticJudge.judge(
         {
           term: input.term,
@@ -112,17 +111,16 @@ const resolveJudgement = async (input: {
       ),
       rejectWhenAborted(input.signal),
     ])
+    return {
+      isCorrect: ai.isCorrect,
+      judgeType: 'ai',
+      judgedByAi: true,
+      judgeProvider: ai.provider,
+      judgeModel: ai.model,
+      promptVersion: ai.promptVersion,
+    }
   } catch (error) {
-    mapJudgeFailure(error)
-  }
-
-  return {
-    isCorrect: ai.isCorrect,
-    judgeType: 'ai',
-    judgedByAi: true,
-    judgeProvider: ai.provider,
-    judgeModel: ai.model,
-    promptVersion: ai.promptVersion,
+    throw mapJudgeFailure(error)
   }
 }
 

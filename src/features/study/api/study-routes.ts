@@ -5,10 +5,8 @@ import type { RandomSource } from '../../../platform/random'
 import { createAppServices } from '../../../server/composition-root'
 import type { AuthBindings } from '../../../server/api/bindings'
 import type { AuthVariables } from '../../../server/api/middleware/auth'
-import {
-  createSlidingWindowRateLimiter,
-  type SlidingWindowRateLimiter,
-} from '../../../server/api/middleware/rate-limit'
+import type { SlidingWindowRateLimiter } from '../../../server/api/middleware/rate-limit'
+import { createSlidingWindowRateLimiter } from '../../../server/api/middleware/rate-limit'
 import type { RequestIdVariables } from '../../../server/api/middleware/request-id'
 import { answerQuestion } from '../application/answer-question'
 import { getOwnedHint } from '../application/get-hint'

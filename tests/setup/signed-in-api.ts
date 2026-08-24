@@ -48,10 +48,13 @@ export const createSignedInApi = (
   })
   privateV1.route('/', createWordRoutes())
   privateV1.route('/', createTranslationRoutes(deps))
-  privateV1.route('/', createStudyRoutes({
-    ...deps,
-    semanticJudge: deps.semanticJudge ?? null,
-  }))
+  privateV1.route(
+    '/',
+    createStudyRoutes({
+      ...deps,
+      semanticJudge: deps.semanticJudge ?? null,
+    }),
+  )
   app.route('/api/v1', privateV1)
 
   return app
