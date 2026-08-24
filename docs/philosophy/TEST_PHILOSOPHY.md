@@ -61,3 +61,4 @@
 
 - 2026-08-20 初版作成
 - 2026-08-20 OQ-016承認を反映
+- 2026-08-24 T12で AI判定の contract mock と `tests/eval` 固定評価セットを通常CIへ追加。live Workers AI は合否に使わない

@@ -26,6 +26,7 @@ export default defineConfig({
       'src/**/*.test.ts',
       'tests/integration/**/*.test.ts',
       'tests/contract/**/*.test.ts',
+      'tests/eval/**/*.test.ts',
     ],
   },
 })

@@ -31,5 +31,12 @@ describe('describeAnswerJudgement', () => {
         judgedByAi: true,
       }),
     ).toBe('AI判定で正解')
+    expect(
+      describeAnswerJudgement({
+        isCorrect: false,
+        judgeType: 'ai',
+        judgedByAi: true,
+      }),
+    ).toBe('AI判定で不正解')
   })
 })

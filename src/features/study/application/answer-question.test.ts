@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { TestResult, TestResultRepository } from '../../history/public'
 import type { Word, WordRepository } from '../../words/public'
+import { AppError } from '../../../platform/app-error'
 import { answerQuestion } from './answer-question'
 import type { SemanticJudge } from '../domain/semantic-judge'
+
+const neverAbort = new AbortController().signal
 
 const wordOf = (meanings: readonly string[]): Word => ({
   id: 'w_1',
@@ -60,14 +63,19 @@ const unusedSemanticJudge: SemanticJudge = {
   },
 }
 
+const answerDefaults = {
+  actorUserId: 'user-a',
+  wordId: 'w_1',
+  signal: neverAbort,
+} as const
+
 describe('answerQuestion', () => {
   it('exact一致はAIを呼ばず履歴へ保存する', async () => {
     const { repository, saved } = recordingRepository()
     const judge = vi.fn(unusedSemanticJudge.judge)
 
     const result = await answerQuestion({
-      actorUserId: 'user-a',
-      wordId: 'w_1',
+      ...answerDefaults,
       answer: '  問題  ',
       hintUsed: true,
       wordRepository: wordRepositoryOf(wordOf(['問題', '論点'])),
@@ -102,8 +110,7 @@ describe('answerQuestion', () => {
     const judge = vi.fn(unusedSemanticJudge.judge)
 
     const result = await answerQuestion({
-      actorUserId: 'user-a',
-      wordId: 'w_1',
+      ...answerDefaults,
       answer: '問題。',
       hintUsed: false,
       wordRepository: wordRepositoryOf(wordOf(['問題'])),
@@ -122,8 +129,7 @@ describe('answerQuestion', () => {
     const { repository, saved } = recordingRepository()
 
     const result = await answerQuestion({
-      actorUserId: 'user-a',
-      wordId: 'w_1',
+      ...answerDefaults,
       answer: '全然違う',
       hintUsed: false,
       wordRepository: wordRepositoryOf(wordOf(['問題'])),
@@ -141,7 +147,7 @@ describe('answerQuestion', () => {
   })
 
   it('不一致かつportがあるときだけSemanticJudgeを1回呼ぶ', async () => {
-    const { repository } = recordingRepository()
+    const { repository, saved } = recordingRepository()
     const judge = vi.fn(async () => ({
       isCorrect: true,
       provider: 'workers-ai',
@@ -150,8 +156,7 @@ describe('answerQuestion', () => {
     }))
 
     const result = await answerQuestion({
-      actorUserId: 'user-a',
-      wordId: 'w_1',
+      ...answerDefaults,
       answer: '全然違う',
       hintUsed: false,
       wordRepository: wordRepositoryOf(wordOf(['問題'])),
@@ -161,15 +166,24 @@ describe('answerQuestion', () => {
     })
 
     expect(judge).toHaveBeenCalledTimes(1)
-    expect(judge).toHaveBeenCalledWith({
-      term: 'issue',
-      answer: '全然違う',
-      meanings: ['問題'],
-    })
+    expect(judge).toHaveBeenCalledWith(
+      {
+        term: 'issue',
+        answer: '全然違う',
+        meanings: ['問題'],
+      },
+      neverAbort,
+    )
     expect(result).toMatchObject({
       isCorrect: true,
       judgeType: 'ai',
       judgedByAi: true,
+    })
+    expect(saved[0]).toMatchObject({
+      judgeType: 'ai',
+      judgeProvider: 'workers-ai',
+      judgeModel: 'test-model',
+      promptVersion: 'v1',
     })
   })
 
@@ -178,7 +192,7 @@ describe('answerQuestion', () => {
 
     await expect(
       answerQuestion({
-        actorUserId: 'user-a',
+        ...answerDefaults,
         wordId: 'w_missing',
         answer: '問題',
         hintUsed: false,
@@ -188,6 +202,30 @@ describe('answerQuestion', () => {
         semanticJudge: null,
       }),
     ).rejects.toMatchObject({ code: 'WORD_NOT_FOUND' })
+    expect(saved).toHaveLength(0)
+  })
+
+  it('AI判定の失敗は履歴を書かず503相当で上げる', async () => {
+    const { repository, saved } = recordingRepository()
+
+    await expect(
+      answerQuestion({
+        ...answerDefaults,
+        answer: '全然違う',
+        hintUsed: false,
+        wordRepository: wordRepositoryOf(wordOf(['問題'])),
+        testResultRepository: repository,
+        clock: { nowEpochMs: () => 50 },
+        semanticJudge: {
+          judge: async () => {
+            throw AppError.aiJudgeUnavailable()
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: 'AI_JUDGE_UNAVAILABLE',
+      httpStatus: 503,
+    })
     expect(saved).toHaveLength(0)
   })
 })
