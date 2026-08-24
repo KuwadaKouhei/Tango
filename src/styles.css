@@ -64,3 +64,13 @@ legend {
   border-left: 4px solid #555;
   padding-left: 0.75rem;
 }
+
+.study-correct {
+  font-weight: 700;
+  color: #216e39;
+}
+
+.study-incorrect {
+  font-weight: 700;
+  color: #9b1c1c;
+}

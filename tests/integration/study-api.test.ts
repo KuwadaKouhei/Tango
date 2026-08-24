@@ -1,5 +1,6 @@
 import { env, SELF } from 'cloudflare:test'
 import { describe, expect, it } from 'vitest'
+import type { SemanticJudge } from '../../src/features/study/domain/semantic-judge'
 import { createWord } from '../../src/features/words/application/manage-word'
 import { createAppServices } from '../../src/server/composition-root'
 import { createSignedInApi } from '../setup/signed-in-api'
@@ -61,6 +62,44 @@ const callHint = async (input: {
     env,
   )
 }
+
+const explodingJudge: SemanticJudge = {
+  judge: async () => {
+    throw new Error('SemanticJudge must not be called')
+  },
+}
+
+const callAnswers = async (input: {
+  actorUserId: string
+  body: unknown
+  origin?: string
+  semanticJudge?: SemanticJudge
+}) => {
+  const headers = new Headers({
+    origin: input.origin ?? env.BETTER_AUTH_URL,
+    'content-type': 'application/json',
+  })
+
+  return createSignedInApi(
+    input.actorUserId,
+    input.semanticJudge === undefined
+      ? {}
+      : { semanticJudge: input.semanticJudge },
+  ).fetch(
+    new Request(`${API_BASE}/api/v1/study/answers`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(input.body),
+    }),
+    env,
+  )
+}
+
+const callListWords = async (actorUserId: string) =>
+  createSignedInApi(actorUserId).fetch(
+    new Request(`${API_BASE}/api/v1/words`),
+    env,
+  )
 
 describe('POST /api/v1/study/questions', () => {
   it('未認証は401になる', async () => {
@@ -240,6 +279,219 @@ describe('POST /api/v1/study/questions', () => {
     expect(tooMany.status).toBe(422)
     expect(await tooMany.json()).toMatchObject({
       error: { code: 'VALIDATION_FAILED' },
+    })
+  })
+})
+
+describe('POST /api/v1/study/answers', () => {
+  it('未認証は401になる', async () => {
+    const response = await SELF.fetch(
+      new Request(`${API_BASE}/api/v1/study/answers`, {
+        method: 'POST',
+        headers: {
+          origin: env.BETTER_AUTH_URL,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          wordId: 'w_missing',
+          answer: '問題',
+          hintUsed: false,
+        }),
+      }),
+    )
+    const body: unknown = await response.json()
+    expect(response.status).toBe(401)
+    expect(body).toMatchObject({ error: { code: 'UNAUTHENTICATED' } })
+  })
+
+  it('Origin不一致は403になる', async () => {
+    const response = await callAnswers({
+      actorUserId: 'answer-origin',
+      origin: 'https://evil.test',
+      body: { wordId: 'w_x', answer: '問題', hintUsed: false },
+    })
+    const body: unknown = await response.json()
+    expect(response.status).toBe(403)
+    expect(body).toMatchObject({ error: { code: 'ORIGIN_NOT_ALLOWED' } })
+  })
+
+  it('完全一致は201でexactになり、AIを呼ばず履歴と統計へ残る', async () => {
+    await insertTestUser(env.DB, 'answer-exact')
+    const word = await seedWord({
+      actorUserId: 'answer-exact',
+      term: 'issue',
+      meanings: ['問題', '論点'],
+      hint: null,
+    })
+
+    const response = await callAnswers({
+      actorUserId: 'answer-exact',
+      semanticJudge: explodingJudge,
+      body: { wordId: word.id, answer: '論点', hintUsed: false },
+    })
+    const body: unknown = await response.json()
+    expect(response.status).toBe(201)
+    expect(body).toEqual({
+      result: {
+        id: expect.stringMatching(/^tr_/u),
+        wordId: word.id,
+        answer: '論点',
+        isCorrect: true,
+        judgeType: 'exact',
+        hintUsed: false,
+        meanings: ['問題', '論点'],
+        judgedByAi: false,
+        answeredAt: expect.any(String),
+      },
+    })
+
+    const listed = await callListWords('answer-exact')
+    const listBody: unknown = await listed.json()
+    expect(listBody).toMatchObject({
+      items: [
+        {
+          id: word.id,
+          stats: {
+            status: 'answered',
+            correct: 1,
+            total: 1,
+            accuracy: 1,
+          },
+        },
+      ],
+    })
+  })
+
+  it('正規化一致はnormalizedで正解にし、かなカナと句読点を同一視する', async () => {
+    await insertTestUser(env.DB, 'answer-normalized')
+    const word = await seedWord({
+      actorUserId: 'answer-normalized',
+      term: 'computer',
+      meanings: ['コンピューター'],
+      hint: null,
+    })
+
+    const response = await callAnswers({
+      actorUserId: 'answer-normalized',
+      semanticJudge: explodingJudge,
+      body: { wordId: word.id, answer: 'こんぴゅーたー！', hintUsed: true },
+    })
+    const body: unknown = await response.json()
+    expect(response.status).toBe(201)
+    expect(body).toMatchObject({
+      result: {
+        wordId: word.id,
+        answer: 'こんぴゅーたー！',
+        isCorrect: true,
+        judgeType: 'normalized',
+        hintUsed: true,
+        judgedByAi: false,
+      },
+    })
+  })
+
+  it('長音の有無だけでは不正解にし、T10ではAIなしで0%として残る', async () => {
+    await insertTestUser(env.DB, 'answer-miss')
+    const word = await seedWord({
+      actorUserId: 'answer-miss',
+      term: 'computer',
+      meanings: ['コンピュータ'],
+      hint: null,
+    })
+
+    const response = await callAnswers({
+      actorUserId: 'answer-miss',
+      body: { wordId: word.id, answer: 'コンピューター', hintUsed: false },
+    })
+    const body: unknown = await response.json()
+    expect(response.status).toBe(201)
+    expect(body).toMatchObject({
+      result: {
+        isCorrect: false,
+        judgeType: 'normalized',
+        judgedByAi: false,
+        meanings: ['コンピュータ'],
+      },
+    })
+
+    const listed = await callListWords('answer-miss')
+    const listBody: unknown = await listed.json()
+    expect(listBody).toMatchObject({
+      items: [
+        {
+          id: word.id,
+          stats: {
+            status: 'answered',
+            correct: 0,
+            total: 1,
+            accuracy: 0,
+          },
+        },
+      ],
+    })
+  })
+
+  it('他ユーザーの単語は404で、どちらの履歴にも残さない', async () => {
+    await insertTestUser(env.DB, 'answer-owner')
+    await insertTestUser(env.DB, 'answer-intruder')
+    const theirs = await seedWord({
+      actorUserId: 'answer-owner',
+      term: 'secret',
+      meanings: ['秘密'],
+      hint: null,
+    })
+
+    const response = await callAnswers({
+      actorUserId: 'answer-intruder',
+      body: { wordId: theirs.id, answer: '秘密', hintUsed: false },
+    })
+    expect(response.status).toBe(404)
+    expect(await response.json()).toMatchObject({
+      error: { code: 'WORD_NOT_FOUND' },
+    })
+
+    const ownerList = await callListWords('answer-owner')
+    expect(await ownerList.json()).toMatchObject({
+      items: [{ id: theirs.id, stats: { status: 'unanswered', total: 0 } }],
+    })
+    const intruderList = await callListWords('answer-intruder')
+    expect(await intruderList.json()).toMatchObject({ items: [] })
+  })
+
+  it('空白回答と長すぎる回答は422になる', async () => {
+    await insertTestUser(env.DB, 'answer-validate')
+    const word = await seedWord({
+      actorUserId: 'answer-validate',
+      term: 'issue',
+      meanings: ['問題'],
+      hint: null,
+    })
+
+    const blank = await callAnswers({
+      actorUserId: 'answer-validate',
+      body: { wordId: word.id, answer: '   ', hintUsed: false },
+    })
+    expect(blank.status).toBe(422)
+    expect(await blank.json()).toMatchObject({
+      error: { code: 'VALIDATION_FAILED' },
+    })
+
+    const tooLong = await callAnswers({
+      actorUserId: 'answer-validate',
+      body: {
+        wordId: word.id,
+        answer: 'あ'.repeat(501),
+        hintUsed: false,
+      },
+    })
+    expect(tooLong.status).toBe(422)
+    expect(await tooLong.json()).toMatchObject({
+      error: { code: 'VALIDATION_FAILED' },
+    })
+
+    const listed = await callListWords('answer-validate')
+    expect(await listed.json()).toMatchObject({
+      items: [{ id: word.id, stats: { status: 'unanswered', total: 0 } }],
     })
   })
 })

@@ -32,6 +32,34 @@ export const studyHintResponseSchema = z
   })
   .strict()
 
+export const studyAnswerRequestSchema = z
+  .object({
+    wordId: z.string().min(1),
+    answer: z.string().max(STUDY_LIMITS.answerMaxChars),
+    hintUsed: z.boolean(),
+  })
+  .strict()
+
+export const studyAnswerResultSchema = z
+  .object({
+    id: z.string(),
+    wordId: z.string(),
+    answer: z.string(),
+    isCorrect: z.boolean(),
+    judgeType: z.enum(['exact', 'normalized', 'ai']),
+    hintUsed: z.boolean(),
+    meanings: z.array(z.string()),
+    judgedByAi: z.boolean(),
+    answeredAt: z.string(),
+  })
+  .strict()
+
+export const studyAnswerResponseSchema = z
+  .object({
+    result: studyAnswerResultSchema,
+  })
+  .strict()
+
 export const apiErrorSchema = z.object({
   error: z.object({
     code: z.string(),
@@ -44,3 +72,6 @@ export const apiErrorSchema = z.object({
 export type StudyQuestionRequest = z.infer<typeof studyQuestionRequestSchema>
 export type StudyQuestionResponse = z.infer<typeof studyQuestionResponseSchema>
 export type StudyHintResponse = z.infer<typeof studyHintResponseSchema>
+export type StudyAnswerRequest = z.infer<typeof studyAnswerRequestSchema>
+export type StudyAnswerResponse = z.infer<typeof studyAnswerResponseSchema>
+export type StudyAnswerResult = z.infer<typeof studyAnswerResultSchema>

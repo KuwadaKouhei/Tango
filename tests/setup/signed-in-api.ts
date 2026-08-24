@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { createStudyRoutes } from '../../src/features/study/api/study-routes'
+import type { SemanticJudge } from '../../src/features/study/domain/semantic-judge'
 import { createTranslationRoutes } from '../../src/features/translation/api/translation-routes'
 import type { TranslationService } from '../../src/features/translation/domain/translation-service'
 import { createWordRoutes } from '../../src/features/words/api/word-routes'
@@ -29,6 +30,7 @@ export const createSignedInApi = (
     rateLimiter?: SlidingWindowRateLimiter
     timeoutMs?: number
     random?: RandomSource
+    semanticJudge?: SemanticJudge
   } = {},
 ) => {
   const app = new Hono<SignedInApiEnv>()
