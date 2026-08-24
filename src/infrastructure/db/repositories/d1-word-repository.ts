@@ -127,6 +127,26 @@ export const buildOwnedWordsPageQuery = (db: AppDb, input: ListWordsQuery) => {
     .limit(input.limit + 1)
 }
 
+export const buildOwnedWeakQuestionQuery = (db: AppDb, ownerUserId: string) =>
+  db
+    .select({
+      id: words.id,
+      term: words.term,
+      hint: words.hint,
+      total: sql<number>`coalesce(count(${testResults.id}), 0)`,
+      correct: sql<number>`coalesce(sum(${testResults.isCorrect}), 0)`,
+    })
+    .from(words)
+    .leftJoin(
+      testResults,
+      and(
+        eq(testResults.wordId, words.id),
+        eq(testResults.userId, words.userId),
+      ),
+    )
+    .where(eq(words.userId, ownerUserId))
+    .groupBy(words.id, words.term, words.hint)
+
 export const buildOwnedWordsStatsQuery = (
   db: AppDb,
   ownerUserId: string,
@@ -249,6 +269,17 @@ export const createD1WordRepository = (db: AppDb): WordRepository => {
         id: row.id,
         term: row.term,
         hasHint: row.hint !== null,
+      }))
+    },
+
+    listOwnedWeakQuestionCandidates: async (ownerUserId) => {
+      const rows = await buildOwnedWeakQuestionQuery(db, ownerUserId)
+      return rows.map((row) => ({
+        id: row.id,
+        term: row.term,
+        hasHint: row.hint !== null,
+        correct: Number(row.correct),
+        total: Number(row.total),
       }))
     },
 

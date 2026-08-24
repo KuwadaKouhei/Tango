@@ -22,6 +22,11 @@ export type OwnedQuestionCandidate = {
   hasHint: boolean
 }
 
+export type OwnedWeakQuestionCandidate = OwnedQuestionCandidate & {
+  correct: number
+  total: number
+}
+
 export type WordRepository = {
   findOwnedById: (ownerUserId: UserId, wordId: WordId) => Promise<Word | null>
   /**
@@ -30,6 +35,12 @@ export type WordRepository = {
   listOwnedQuestionCandidates: (
     ownerUserId: UserId,
   ) => Promise<OwnedQuestionCandidate[]>
+  /**
+   * 苦手優先用。所有単語と正解数/回答数だけを返す。重みはapplicationで計算する。
+   */
+  listOwnedWeakQuestionCandidates: (
+    ownerUserId: UserId,
+  ) => Promise<OwnedWeakQuestionCandidate[]>
   /**
    * OQ-008の重複照合。所有者scope内の正規形一致を1件だけ引く。
    * 更新時に自分自身を除外できるよう、Wordではなくidを返す。

@@ -26,6 +26,7 @@ const wordRepositoryOf = (word: Word | null): WordRepository => ({
   findOwnedById: async () => word,
   findOwnedIdByNormalizedTerm: async () => null,
   listOwnedQuestionCandidates: async () => [],
+  listOwnedWeakQuestionCandidates: async () => [],
   listByOwner: async () => ({ items: [], nextCursor: null }),
   create: async () => {
     throw new Error('unused')

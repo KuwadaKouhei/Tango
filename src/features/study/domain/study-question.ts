@@ -4,6 +4,11 @@ export type StudyCandidate = {
   hasHint: boolean
 }
 
+export type WeightedStudyCandidate = StudyCandidate & {
+  correct: number
+  total: number
+}
+
 export type StudyQuestion = {
   wordId: string
   term: string

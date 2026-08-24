@@ -3,6 +3,7 @@ import type { RandomSource } from '../../../platform/random'
 import type { WordRepository } from '../../words/public'
 import {
   selectRandomCandidate,
+  selectWeightedCandidate,
   toExcludedWordIdSet,
 } from '../domain/question-selector'
 import { STUDY_LIMITS } from '../domain/study-limits'
@@ -10,7 +11,19 @@ import type { StudyMode } from '../domain/study-limits'
 import type {
   NextStudyQuestion,
   StudyCandidate,
+  WeightedStudyCandidate,
 } from '../domain/study-question'
+
+const toQuestion = (
+  candidate: StudyCandidate | WeightedStudyCandidate | null,
+): NextStudyQuestion['question'] =>
+  candidate
+    ? {
+        wordId: candidate.wordId,
+        term: candidate.term,
+        hasHint: candidate.hasHint,
+      }
+    : null
 
 export const selectNextQuestion = async (input: {
   actorUserId: string
@@ -19,17 +32,37 @@ export const selectNextQuestion = async (input: {
   wordRepository: WordRepository
   random: RandomSource
 }): Promise<NextStudyQuestion> => {
-  if (input.mode === 'weak') {
-    throw AppError.validation('苦手優先はまだ利用できません。', {
-      fields: ['mode'],
-    })
-  }
-
   if (input.excludeWordIds.length > STUDY_LIMITS.excludeWordIdsMax) {
     throw AppError.validation(
       `除外する単語は${String(STUDY_LIMITS.excludeWordIdsMax)}件までです。`,
       { fields: ['excludeWordIds'] },
     )
+  }
+
+  const excluded = toExcludedWordIdSet(input.excludeWordIds)
+
+  if (input.mode === 'weak') {
+    const owned = await input.wordRepository.listOwnedWeakQuestionCandidates(
+      input.actorUserId,
+    )
+    if (owned.length === 0) {
+      throw AppError.noStudyWords()
+    }
+
+    const candidates: WeightedStudyCandidate[] = owned.map((word) => ({
+      wordId: word.id,
+      term: word.term,
+      hasHint: word.hasHint,
+      correct: word.correct,
+      total: word.total,
+    }))
+
+    return {
+      ownedWordCount: owned.length,
+      question: toQuestion(
+        selectWeightedCandidate(candidates, excluded, input.random),
+      ),
+    }
   }
 
   const owned = await input.wordRepository.listOwnedQuestionCandidates(
@@ -44,20 +77,10 @@ export const selectNextQuestion = async (input: {
     term: word.term,
     hasHint: word.hasHint,
   }))
-  const selected = selectRandomCandidate(
-    candidates,
-    toExcludedWordIdSet(input.excludeWordIds),
-    input.random,
-  )
+  const selected = selectRandomCandidate(candidates, excluded, input.random)
 
   return {
     ownedWordCount: owned.length,
-    question: selected
-      ? {
-          wordId: selected.wordId,
-          term: selected.term,
-          hasHint: selected.hasHint,
-        }
-      : null,
+    question: toQuestion(selected),
   }
 }

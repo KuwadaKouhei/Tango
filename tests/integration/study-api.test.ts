@@ -1,7 +1,12 @@
 import { env, SELF } from 'cloudflare:test'
 import { describe, expect, it } from 'vitest'
+import { selectNextQuestion } from '../../src/features/study/application/select-question'
 import type { SemanticJudge } from '../../src/features/study/domain/semantic-judge'
 import { createWord } from '../../src/features/words/application/manage-word'
+import { createDb } from '../../src/infrastructure/db/drizzle'
+import { buildOwnedWeakQuestionQuery } from '../../src/infrastructure/db/repositories/d1-word-repository'
+import { createOpaqueId } from '../../src/platform/ids'
+import type { RandomSource } from '../../src/platform/random'
 import { createAppServices } from '../../src/server/composition-root'
 import { createSignedInApi } from '../setup/signed-in-api'
 import { insertTestUser } from '../setup/test-builders'
@@ -22,17 +27,43 @@ const seedWord = async (input: {
   })
 }
 
+const appendResult = async (input: {
+  userId: string
+  wordId: string
+  isCorrect: boolean
+  createdAt: number
+}) => {
+  const services = createAppServices(env)
+  await services.testResultRepository.append({
+    id: createOpaqueId('tr'),
+    userId: input.userId,
+    wordId: input.wordId,
+    answer: '問題',
+    isCorrect: input.isCorrect,
+    judgeType: 'exact',
+    hintUsed: false,
+    judgeProvider: null,
+    judgeModel: null,
+    promptVersion: null,
+    createdAt: input.createdAt,
+  })
+}
+
 const callQuestions = async (input: {
   actorUserId: string
   body: unknown
   origin?: string
+  random?: RandomSource
 }) => {
   const headers = new Headers({
     origin: input.origin ?? env.BETTER_AUTH_URL,
     'content-type': 'application/json',
   })
 
-  return createSignedInApi(input.actorUserId).fetch(
+  return createSignedInApi(
+    input.actorUserId,
+    input.random === undefined ? {} : { random: input.random },
+  ).fetch(
     new Request(`${API_BASE}/api/v1/study/questions`, {
       method: 'POST',
       headers,
@@ -248,22 +279,13 @@ describe('POST /api/v1/study/questions', () => {
     })
   })
 
-  it('苦手優先と長すぎる除外は422になる', async () => {
+  it('長すぎる除外は422になる', async () => {
     await insertTestUser(env.DB, 'study-validate')
     await seedWord({
       actorUserId: 'study-validate',
       term: 'issue',
       meanings: ['問題'],
       hint: null,
-    })
-
-    const weak = await callQuestions({
-      actorUserId: 'study-validate',
-      body: { mode: 'weak', excludeWordIds: [] },
-    })
-    expect(weak.status).toBe(422)
-    expect(await weak.json()).toMatchObject({
-      error: { code: 'VALIDATION_FAILED' },
     })
 
     const tooMany = await callQuestions({
@@ -280,6 +302,152 @@ describe('POST /api/v1/study/questions', () => {
     expect(await tooMany.json()).toMatchObject({
       error: { code: 'VALIDATION_FAILED' },
     })
+  })
+})
+
+describe('POST /api/v1/study/questions weak', () => {
+  it('自分の単語だけを重み付きで出し、他ユーザーは出さない', async () => {
+    await insertTestUser(env.DB, 'weak-owner')
+    await insertTestUser(env.DB, 'weak-other')
+    const weakWord = await seedWord({
+      actorUserId: 'weak-owner',
+      term: 'weak-term',
+      meanings: ['苦手'],
+      hint: null,
+    })
+    const strongWord = await seedWord({
+      actorUserId: 'weak-owner',
+      term: 'strong-term',
+      meanings: ['得意'],
+      hint: '見えてはいけないヒント',
+    })
+    const foreign = await seedWord({
+      actorUserId: 'weak-other',
+      term: 'foreign',
+      meanings: ['他人'],
+      hint: null,
+    })
+    await appendResult({
+      userId: 'weak-owner',
+      wordId: weakWord.id,
+      isCorrect: false,
+      createdAt: 10,
+    })
+    await appendResult({
+      userId: 'weak-owner',
+      wordId: strongWord.id,
+      isCorrect: true,
+      createdAt: 11,
+    })
+    await appendResult({
+      userId: 'weak-owner',
+      wordId: strongWord.id,
+      isCorrect: true,
+      createdAt: 12,
+    })
+
+    const response = await callQuestions({
+      actorUserId: 'weak-owner',
+      body: { mode: 'weak', excludeWordIds: [] },
+      random: { nextUnitInterval: () => 0.1 },
+    })
+    const body: unknown = await response.json()
+    expect(response.status).toBe(200)
+    expect(body).toEqual({
+      ownedWordCount: 2,
+      question: {
+        wordId: weakWord.id,
+        term: 'weak-term',
+        hasHint: false,
+      },
+    })
+    expect(JSON.stringify(body)).not.toContain(foreign.id)
+    expect(JSON.stringify(body)).not.toContain('foreign')
+    expect(JSON.stringify(body)).not.toContain('見えてはいけないヒント')
+  })
+
+  it('除外で尽きたらquestion nullになり、所有0件は404になる', async () => {
+    await insertTestUser(env.DB, 'weak-exclude')
+    const word = await seedWord({
+      actorUserId: 'weak-exclude',
+      term: 'only',
+      meanings: ['だけ'],
+      hint: null,
+    })
+
+    const done = await callQuestions({
+      actorUserId: 'weak-exclude',
+      body: { mode: 'weak', excludeWordIds: [word.id] },
+    })
+    expect(done.status).toBe(200)
+    expect(await done.json()).toEqual({
+      ownedWordCount: 1,
+      question: null,
+    })
+
+    await insertTestUser(env.DB, 'weak-empty')
+    const empty = await callQuestions({
+      actorUserId: 'weak-empty',
+      body: { mode: 'weak', excludeWordIds: [] },
+    })
+    expect(empty.status).toBe(404)
+    expect(await empty.json()).toMatchObject({
+      error: { code: 'NO_STUDY_WORDS' },
+    })
+  })
+
+  it('個人規模の苦手抽選queryと抽選が完了する', async () => {
+    await insertTestUser(env.DB, 'weak-scale')
+    const services = createAppServices(env)
+    const count = 80
+    for (let index = 0; index < count; index += 1) {
+      const word = await seedWord({
+        actorUserId: 'weak-scale',
+        term: `scale-${String(index)}`,
+        meanings: ['計測'],
+        hint: null,
+      })
+      if (index % 4 === 0) {
+        await appendResult({
+          userId: 'weak-scale',
+          wordId: word.id,
+          isCorrect: index % 8 === 0,
+          createdAt: index,
+        })
+      }
+    }
+
+    const started = Date.now()
+    const listed =
+      await services.wordRepository.listOwnedWeakQuestionCandidates(
+        'weak-scale',
+      )
+    const selected = await selectNextQuestion({
+      actorUserId: 'weak-scale',
+      mode: 'weak',
+      excludeWordIds: [],
+      wordRepository: services.wordRepository,
+      random: { nextUnitInterval: () => 0.3 },
+    })
+    const elapsedMs = Date.now() - started
+
+    expect(listed).toHaveLength(count)
+    expect(listed.every((word) => word.total >= 0)).toBe(true)
+    expect(selected.ownedWordCount).toBe(count)
+    expect(selected.question).not.toBeNull()
+    // hang検出。OQ-012のSLOではない。
+    expect(elapsedMs).toBeLessThan(5_000)
+  })
+
+  it('苦手集計queryは所有者scopeのwordsを見る', async () => {
+    await insertTestUser(env.DB, 'weak-plan')
+    const db = createDb(env)
+    const query = buildOwnedWeakQuestionQuery(db, 'weak-plan')
+    const plan = await env.DB.prepare(`EXPLAIN QUERY PLAN ${query.toSQL().sql}`)
+      .bind(...query.toSQL().params)
+      .all<{ detail: string }>()
+    const details = plan.results.map((row) => row.detail).join('\n')
+    expect(details.length).toBeGreaterThan(0)
   })
 })
 

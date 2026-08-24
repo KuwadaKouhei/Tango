@@ -9,21 +9,12 @@ export function StudySetupForm() {
   const [count, setCount] = useState<StudyCountChoice>(
     STUDY_LIMITS.defaultCount,
   )
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   return (
     <form
       className="study-setup"
       onSubmit={(event) => {
         event.preventDefault()
-        if (mode === 'weak') {
-          setErrorMessage(
-            '苦手優先はまだ利用できません。完全ランダムを選んでください。',
-          )
-          return
-        }
-
-        setErrorMessage(null)
         void navigate({
           to: '/study/session',
           search: { mode, count },
@@ -35,8 +26,6 @@ export function StudySetupForm() {
         出題方法と件数を選んでください。同じテストの中で同じ単語は繰り返し出ません。
       </p>
 
-      {errorMessage ? <p role="alert">{errorMessage}</p> : null}
-
       <fieldset>
         <legend>出題方法</legend>
         <p>
@@ -47,7 +36,6 @@ export function StudySetupForm() {
               value="random"
               checked={mode === 'random'}
               onChange={() => {
-                setErrorMessage(null)
                 setMode('random')
               }}
             />
@@ -62,11 +50,10 @@ export function StudySetupForm() {
               value="weak"
               checked={mode === 'weak'}
               onChange={() => {
-                setErrorMessage(null)
                 setMode('weak')
               }}
             />
-            苦手優先（準備中）
+            苦手優先
           </label>
         </p>
       </fieldset>
