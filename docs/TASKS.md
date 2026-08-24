@@ -31,7 +31,7 @@
 | T18 | 単語一覧の検索 | AC-014 | T05 | OQ-010（決定済み） | `feature/T18-word-search` | ✅マージ済み |
 | T09 | テスト設定・ランダム出題・ヒント表示 | AC-005,006 | T04,T05 | OQ-005（決定済み） | `cursor/t09-random-study-4bb7` | ✅マージ済み |
 | T10 | exact/normalized判定と履歴保存 | AC-007,009 | T03,T09 | OQ-004,018（決定済み） | `cursor/t10-local-judgement-4bb7` | ✅マージ済み |
-| T11 | 苦手優先出題 | AC-005 | T10 | OQ-006（決定済み）。OQ-012は個人規模で計測 | `cursor/t11-weak-study-4bb7` | 🚧作業中 |
+| T11 | 苦手優先出題 | AC-005 | T10 | OQ-006（決定済み）。OQ-012は個人規模で計測 | `cursor/t11-weak-study-4bb7` | 🟡PR中 |
 | T12 | AI意味判定fallback | AC-008,009 | T10 | OQ-002,003,015（決定済み）。model IDはPOC-05 | `feature/T12-ai-judgement` | ⬜未着手 |
 | T13 | 回答結果・次問題・テスト終了 | AC-005〜009,015 | T09,T10,T12 | OQ-005,010（決定済み） | `feature/T13-answer-result` | ⬜未着手 |
 | T14 | 正解率カード色とアクセシビリティ | AC-010,011 | T10,T11 | OQ-007（決定済み） | `feature/T14-mastery-visuals` | ⬜未着手 |
@@ -352,3 +352,4 @@ OQ-010のうち重複誘導UI、間違い再テスト、AI手動修正は未採�
 - 2026-08-23 T10を作業中へ更新。local判定と `POST /api/v1/study/answers` を実装
 - 2026-08-23 T10をPR中へ更新
 - 2026-08-24 T10をマージ済みへ更新。T11を作業中へ更新
+- 2026-08-24 T11をPR中へ更新

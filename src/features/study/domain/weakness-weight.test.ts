@@ -25,6 +25,8 @@ describe('toWeaknessWeight', () => {
     expect(toWeaknessWeight(1, 2)).toBe(0.5)
     expect(toWeaknessWeight(1, 4)).toBe(0.75)
     expect(toWeaknessWeight(0, 1)).toBeGreaterThan(0)
-    expect(toWeaknessWeight(9, 10)).toBeGreaterThanOrEqual(WEAKNESS_WEIGHT_FLOOR)
+    expect(toWeaknessWeight(9, 10)).toBeGreaterThanOrEqual(
+      WEAKNESS_WEIGHT_FLOOR,
+    )
   })
 })

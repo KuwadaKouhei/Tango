@@ -435,7 +435,8 @@ describe('POST /api/v1/study/questions weak', () => {
     expect(listed.every((word) => word.total >= 0)).toBe(true)
     expect(selected.ownedWordCount).toBe(count)
     expect(selected.question).not.toBeNull()
-    expect(elapsedMs).toBeGreaterThanOrEqual(0)
+    // hang検出。OQ-012のSLOではない。
+    expect(elapsedMs).toBeLessThan(5_000)
   })
 
   it('苦手集計queryは所有者scopeのwordsを見る', async () => {

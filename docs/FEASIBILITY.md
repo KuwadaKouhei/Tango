@@ -138,7 +138,7 @@
 
 - 依存バージョンは `TECH_STACK.md` の調査時点候補であり、POC-01〜04合格後にlockfileを正とする。
 - MVPの実利用規模と性能SLOは未確定。公開前にOQ-012を決める。
-- T11: Workers Vitest の local D1 で所有80語の苦手集計query+1件抽選を計測した。数値は更新履歴を参照。SLOは固定しない。
+- T11: Workers Vitest の local D1 で所有80語を用意し、苦手集計query+1件抽選を計測した。当該テストは seed 込み 496ms。query+抽選はその内側。5秒超はhangとして落とすが、OQ-012のSLOではない。
 - Google OAuthのclient ID/secret、Cloudflare token等はユーザーが安全なsecret storeへ設定し、文書・ログ・Gitへ保存しない。
 - AIへ送るのは英単語、登録意味、回答に限定し、不要なユーザープロフィールやセッション情報を含めない。
 
@@ -156,3 +156,4 @@
 - 2026-08-23 OQ-001再決定。翻訳をDeepL API Freeへ差し替え。Workers AI翻訳は品質不足で不採用
 - 2026-08-23 OQ-002〜007,010決定。POC-05の担当をT12へ訂正。AI判定提供者はWorkers AI
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新
+- 2026-08-24 T11で所有80語の苦手抽選を計測。SLOは固定しない

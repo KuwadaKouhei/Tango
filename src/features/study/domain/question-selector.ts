@@ -9,7 +9,8 @@ export const toExcludedWordIdSet = (
 export const remainingStudyCandidates = <T extends { wordId: string }>(
   candidates: readonly T[],
   excludeWordIds: ReadonlySet<string>,
-): T[] => candidates.filter((candidate) => !excludeWordIds.has(candidate.wordId))
+): T[] =>
+  candidates.filter((candidate) => !excludeWordIds.has(candidate.wordId))
 
 const boundUnitInterval = (random: RandomSource): number => {
   const unit = random.nextUnitInterval()
