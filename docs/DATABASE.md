@@ -298,7 +298,7 @@ accuracy = total == 0 ? 0 : correct / total
 weight  = max(1 - accuracy, 0.05)
 ```
 
-SQLへ重み式を埋め込まない。回答回数と直近正誤の列は重みに使わない。同一テスト内の除外は `excludeWordIds` を集計後の抽選候補から外す。
+SQLへ重み式を埋め込まない。回答回数と直近正誤の列は重みに使わない。同一テスト内の除外は `excludeWordIds` を集計後の抽選候補から外す。重み計算は `src/features/study/domain/weakness-weight.ts`。T11で所有80語のquery+抽選をWorkers Vitest上で計測し、OQ-012のSLOは固定しない。
 
 ### 6.3 cursor
 
@@ -436,3 +436,4 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 - 2026-08-23 OQ-004/006/010決定。保存用正規化は現状維持。判定追加正規化は非保存。苦手重み式と検索LIKEを記載。`test_sessions` は作らない
 - 2026-08-23 T18で検索LIKEのESCAPEを `!` に確定
 - 2026-08-23 remote D1へ同一migrationを適用し、配備WorkerでOAuth/CRUDを確認（POC-04 live）
+- 2026-08-24 T11で苦手候補の LEFT JOIN 集計を実装。重みはSQLに埋め込まない。個人規模の計測はSLOにしない

@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T10で study の回答判定と履歴保存を追加済み**
+> 状態: **T11で苦手優先出題の重み付き抽選を追加済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -102,6 +102,7 @@ Tango/
 │   │   │   │   ├── study-question.ts
 │   │   │   │   ├── planned-count.ts
 │   │   │   │   ├── question-selector.ts
+│   │   │   │   ├── weakness-weight.ts
 │   │   │   │   ├── normalize-for-judgement.ts
 │   │   │   │   ├── answer-judge.ts
 │   │   │   │   ├── prepare-answer.ts
@@ -354,3 +355,4 @@ composition-root -> application + infrastructure
 - 2026-08-23 T18で word-list-search と escape-like-pattern を追加
 - 2026-08-23 T09で study feature、`/study`、`/study/session`、study-api test を追加。判定と苦手抽選のfileはT10/T11
 - 2026-08-23 T10で判定用normalize、answer API、history/public.ts、セッション回答UIを追加。T12 adapterは未作成
+- 2026-08-24 T11で weakness-weight と重み付き抽選を追加。苦手候補queryは words LEFT JOIN test_results

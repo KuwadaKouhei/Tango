@@ -347,7 +347,7 @@ POST /api/v1/study/questions
 出題数の選択（5/10/20/全部、既定10）はクライアントのテスト状態であり、このrequestには載せない。サーバーは所有単語から `excludeWordIds` を除いた集合から1件返す（OQ-005）。
 
 - `excludeWordIds` は opaque ID の配列。上限500。重複は無視。未知ID・他ユーザーIDは候補に出ないだけでエラーにしない。
-- `mode` が `random` なら一様抽選、`weak` なら OQ-006 の重み付き抽選。T09では `weak` を `422 VALIDATION_FAILED` にし、抽選本体はT11。
+- `mode` が `random` なら一様抽選、`weak` なら OQ-006 の重み付き抽選。
 - 所有0件は `404 NO_STUDY_WORDS`。
 - 所有はあるが除外で尽きた場合は `200` で `question: null`（今回テストの終了）。
 - 同一テスト内の重複防止の正本は `excludeWordIds`。`test_sessions` は持たない。
@@ -548,7 +548,7 @@ T10時点の意図的な限定:
 - 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
 - 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
 - カード色の補間はOQ-007。実装はT14。一覧は未回答と正解率を文字でも示す。
-- T09は出題とヒントまで。回答の判定APIはT10で追加した。苦手優先の抽選はT11。
+- T09は出題とヒントまで。回答の判定APIはT10で追加した。苦手優先の抽選はT11で追加した。
 - T10のlocal不一致は、DBの `judge_type` が `exact|normalized|ai` しか置けないため `normalized` + `isCorrect:false` で保存する。第4のenumは作らない。T13は `!isCorrect && !judgedByAi` を「一致しませんでした」と見せる。T12が不一致を保存前にAIへ送る。
 - T10は `SemanticJudge` を注入しない。exact/normalizedで決着したらAIを呼ばない。不一致でもT10ではAI 0回。
 - T10の結果UIは正誤・判定段階・登録意味と次問まで。終了結果の集計画面はT13。
@@ -585,4 +585,5 @@ T10時点の意図的な限定:
 - 2026-08-23 T18で一覧検索 `q` を実装。LIKE は `ESCAPE '!'`
 - 2026-08-23 T09で `POST /api/v1/study/questions` と hint GET を実装。`weak` は422。回答判定はT10
 - 2026-08-23 T10で `POST /api/v1/study/answers` と local判定を実装。AI adapterはT12。local missの `judge_type` は逸脱節を参照
+- 2026-08-24 T11で `weak` の OQ-006 重み付き抽選を実装。random の一様抽選は変えない
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新

@@ -138,6 +138,7 @@
 
 - 依存バージョンは `TECH_STACK.md` の調査時点候補であり、POC-01〜04合格後にlockfileを正とする。
 - MVPの実利用規模と性能SLOは未確定。公開前にOQ-012を決める。
+- T11: Workers Vitest の local D1 で所有80語の苦手集計query+1件抽選を計測した。数値は更新履歴を参照。SLOは固定しない。
 - Google OAuthのclient ID/secret、Cloudflare token等はユーザーが安全なsecret storeへ設定し、文書・ログ・Gitへ保存しない。
 - AIへ送るのは英単語、登録意味、回答に限定し、不要なユーザープロフィールやセッション情報を含めない。
 

@@ -1,3 +1,7 @@
 export { normalizeMeaning } from './domain/normalize-meaning'
 export type { UserId, Word, WordId } from './domain/word'
-export type { WordRepository } from './domain/word-repository'
+export type {
+  OwnedQuestionCandidate,
+  OwnedWeakQuestionCandidate,
+  WordRepository,
+} from './domain/word-repository'
