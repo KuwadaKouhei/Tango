@@ -157,7 +157,10 @@ function WordCard({
   onConfirmDelete: () => void
 }) {
   return (
-    <article className="word-card" style={masteryCardSurfaceStyle(word.stats.accuracy)}>
+    <article
+      className="word-card"
+      style={masteryCardSurfaceStyle(word.stats.accuracy)}
+    >
       <h2>{word.term}</h2>
       <ol>
         {word.meanings.map((meaning) => (
