@@ -1,7 +1,7 @@
 # リリースゲート（T15）
 
-> 状態: **T15マージ済み。CIとE2Eは自動化。Workers previewへの再配備はこの環境では未実施。**
-> OQ-012（本番規模・SLO）は未決のまま固定しない。本番公開判定の前に人間が決める。
+> 状態: **T15マージ済み。CIとE2Eは自動化。T15入り `main` の Worker 再配備と smoke は 2026-08-25 に人間が実施。MVP残作業リストはクローズ。**
+> OQ-012 は決定済み（同時1〜5、単語100、履歴50、アプリ内p95目安約2秒）。CIのSLOゲートは作らない。
 
 ## 1. 自動化した条件
 
@@ -30,6 +30,21 @@ E2Eは `tests/e2e/dev.vars.ci` のダミー値を `.dev.vars` へコピーして
 | log | 公開errorにSQL/stack/provider本文/secretを出さない。回答・意味・prompt全文は既定logへ出さない |
 | CORS | MVPは same-origin。`BETTER_AUTH_URL` と Origin を照合 |
 
+### 2.1 実施記録（2026-08-25）
+
+値は見ていない。名前と追跡状態だけ確認した。
+
+| 確認 | 結果 |
+|---|---|
+| Git の `.dev.vars` / `.env` | `.gitignore` 済み。tracked ではない。履歴にも無い |
+| tracked の例示 | `.dev.vars.example` は `replace-me`。`tests/e2e/dev.vars.ci` は CI 用ダミー。本番secretではない |
+| `wrangler.jsonc` の `vars` | `BETTER_AUTH_URL` のみ。`E2E_AUTH_SECRET` を置いた履歴も無い |
+| GitHub Actions | `deploy.yml` は無い。E2E は CI runner 上で `tests/e2e/dev.vars.ci` を `.dev.vars` へコピーするだけ |
+| コードの門 | `isLocalE2eAuthEnabled` は `E2E_AUTH_SECRET` あり、かつ `http://localhost` または `http://127.0.0.1` のときだけ開く。本番 `https://tango.eitango.workers.dev` では開かない |
+| 本番 Worker の secret 名一覧 | 人間が `wrangler secret list` を実施。**`E2E_AUTH_SECRET` は存在しない**。値は貼っていない |
+
+今後も本番 Worker に `E2E_AUTH_SECRET` を置かない。
+
 ## 3. migration rehearsal
 
 - 適用済みSQLは改変しない。local → preview → production の順。
@@ -41,7 +56,7 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 
 ## 4. preview 配備手順（人手）
 
-このCloud Agent環境には Cloudflare 配備tokenがないため、T15では remote preview を再実行していない。人間が次を同じconfigで行う。
+同じ `wrangler.jsonc` と `drizzle/` で、手元から次を行う。Cloud Agent の VM には Cloudflare 配備tokenがない。
 
 1. 本番と同じ `wrangler.jsonc` と `drizzle/` を使う。
 2. secretはWorkers secretへ。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけ。
@@ -49,17 +64,39 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 4. remote D1へ未適用migrationがあれば `wrangler d1 migrations apply tango --remote`。
 5. smoke: Google login、単語CRUD、検索、テスト1問（exact）、一覧統計。翻訳とAIは既存POCを再利用し、通常は live を増やさない。
 
-2026-08-23 の配備Workerで POC-03/04/06 は live 合格済み。POC-05 live品質は未実施のまま。
+### 4.1 実施記録
+
+| 日 | 対象 | 実施 | 結果 |
+|---|---|---|---|
+| 2026-08-23 | 当時の配備Worker | POC-03/04/06 live | 合格。POC-05 liveは未実施 |
+| 2026-08-25 | T15マージ後の `main` を `https://tango.eitango.workers.dev` へ `wrangler deploy` | RELEASE_GATE 4節の smoke（login、CRUD、検索、exact 1問、統計） | 人間が完了を報告。Cloud Agent は Google 動線を直接観察していない。翻訳とAIの live は増やしていない |
+
+`0000`〜`0003` は 2026-08-23 に remote D1 へ適用済み。T15再配備で新しい migration は無い。POC-05 liveは 2026-08-25 に条件付き合格（`issue-synonym` 外れをMVP許容。`docs/FEASIBILITY.md`）。
 
 ## 5. OQ-012
 
-未決。T15は性能SLOを発明しない。
+2026-08-25 に決定。CIのSLOゲートは作らない。実装・timeout・schemaは変えない。
 
-記録済みの個人規模計測（T11）: Workers Vitest の local D1 で所有80語の苦手集計+1件抽選。seed込みテストは約500ms。5秒超はhangとして落とすが、公開SLOではない。
+| 項目 | 値 |
+|---|---|
+| 同時利用者 | 1〜5人 |
+| 1ユーザーあたり単語 | 100件 |
+| 1ユーザーあたり回答履歴 | 50件 |
+| p95目安 | 約2秒（一覧・検索・出題・exact/normalized。T11の約500msはこの内側） |
+| 対象外 | 翻訳・AI判定（timeout 8秒据え置き） |
 
-本番公開判定の前に p95、同時利用者、単語数、履歴数を人間が決める。
+この規模では schema や query 方式を変えない。
 
 ## 6. 更新履歴
 
 - 2026-08-25 T15初版。CI/E2Eを自動化。preview再配備は人手手順のみ
 - 2026-08-25 T15マージ済み。OQ-012とpreview再配備・POC-05 liveは残作業
+- 2026-08-25 人間が T15入り `main` を `tango.eitango.workers.dev` へ再配備し smoke 完了を報告。POC-05 liveとOQ-012は残作業
+- 2026-08-25 POC-05 live一部。`issue-synonym` はAI不正解。差し替えは未決
+- 2026-08-25 `issue-synonym` 外れをMVP許容。model/promptは据え置き
+- 2026-08-25 OQ-012の規模を決定（同時1〜5、単語100、履歴50）。p95は未決
+- 2026-08-25 OQ-012のp95目安を約2秒として決定。翻訳・AI判定は対象外。CIゲートは作らない
+- 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新
+- 2026-08-25 Git上の `.dev.vars` 非commitと `wrangler.jsonc` に `E2E_AUTH_SECRET` が無いことを確認。本番 Worker の secret 名一覧は手元確認待ち
+- 2026-08-25 人間が本番 Worker の secret 名一覧を確認。`E2E_AUTH_SECRET` は存在しない。値は貼っていない
+- 2026-08-25 MVP残作業リストをクローズ。次の実装は人間が新IDを選んでから追加する

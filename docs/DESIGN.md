@@ -266,7 +266,7 @@ GET /api/v1/words?limit=20&cursor=opaque&q=
 
 `q` は任意。trim後0文字または未指定は通常一覧。trim後1〜100文字。`normalizeTerm(q)` が `words.normalized_term` に部分一致するか、`normalizeMeaning(q)` がいずれかの `word_meanings.normalized_meaning` に部分一致すればヒットする。所有者scope必須。他ユーザーはヒットしない。LIKEの `%` `_` `!` は `!` でエスケープする。空結果は `items: []`。
 
-`limit`未指定は20。上限100はOQ-012未決のため防御値。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
+`limit`未指定は20。上限100は防御値（OQ-012の1ユーザー100語と一致）。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
 
 ```json
 200 OK
@@ -462,7 +462,7 @@ session.user.id + wordIdで単語と全意味を取得
   - `weight = max(1 - accuracy, 0.05)`
   - 回答回数と直近正誤は見ない。
 - クライアントは出した `wordId` を `excludeWordIds` へ蓄積し、`plannedCount` 件回答するか `question === null` で終了結果へ進む。
-- MVPは個人データ規模で全候補を扱う。OQ-012が大規模ならquery方式を再設計する。
+- MVPは個人データ規模で全候補を扱う。OQ-012の想定は同時1〜5人、1ユーザー100語、履歴50件。これを超えるならquery方式を再設計する。
 
 ### 6.5 統計
 
@@ -557,19 +557,19 @@ T10時点の意図的な限定:
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
 - 通常CIはDeepLをlive callしない。POC-06の品質確認は2026-08-23に配備Workerで人手実施済み。
-- 通常CIはWorkers AIをlive callしない。POC-05の固定評価セットはcontract mock。live品質は配備Workerでの人手確認（未実施）。
+- 通常CIはWorkers AIをlive callしない。POC-05の固定評価セットはcontract mock。liveは2026-08-25に `issue-synonym` 外れをMVP許容。model/promptは据え置き。
 - Workers AI bindingは翻訳では使わない。T12の `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDは `@cf/meta/llama-3.1-8b-instruct-fast`。prompt versionは `tango-judge-v1`。
 - wrangler 生成の `AiModels` はこの model ID をまだ含まないため、composition-rootは狭い `run` 口へ委譲する。`wrangler.test.jsonc` には `ai` binding を足さない。
-- T15のE2EはGoogle OAuthをlive callしない。`E2E_AUTH_SECRET` と localhost の `BETTER_AUTH_URL` が揃ったときだけ Better Auth の email/password を開き、Playwrightがsession cookieを保存する。ログイン画面はGoogleのまま。本番httpsでは門を閉じる。
+- T15のE2EはGoogle OAuthをlive callしない。`E2E_AUTH_SECRET` と localhost の `BETTER_AUTH_URL` が揃ったときだけ Better Auth の email/password を開き、Playwrightがsession cookieを保存する。ログイン画面はGoogleのまま。本番httpsでは門を閉じる。本番 Worker に `E2E_AUTH_SECRET` は無い（2026-08-25 人間確認）。
 - E2Eの `vite dev` は `E2E=true` で Cloudflare Vite plugin の `remoteBindings` を閉じる。Workers AI remote proxy は API token が要るためCIでは使わない。exact一致のE2EはAIを呼ばない。
 
 ## 10. 未決事項
 
-- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）と OQ-012（本番規模）だけ。
+- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張・将来）。MVP残作業リストは2026-08-25にクローズ。次の実装は人間が新IDを選んでから追加する。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Googleは2026-08-23に配備Workerで確認済み。
 - T08/T17: 翻訳はDeepL API Free。POC-06のlive確認は2026-08-23に配備Workerで実施済み。
-- T12: Workers AI の model ID は `@cf/meta/llama-3.1-8b-instruct-fast` にlock。POC-05 live品質は未実施。
+- T12: Workers AI の model ID は `@cf/meta/llama-3.1-8b-instruct-fast` にlock。POC-05 liveは2026-08-25に条件付き合格。`issue-synonym` 外れはMVP許容。
 
 ## 11. 更新履歴
 
@@ -595,4 +595,12 @@ T10時点の意図的な限定:
 - 2026-08-24 T13で今回テストの終了結果をクライアント集計で表示。別URLは作らない
 - 2026-08-25 T14で一覧カード背景をOQ-007のHSL線形補間にし、未回答と0%を文字でも区別する
 - 2026-08-25 T15でCIとPlaywright E2Eを追加。OQ-012は未決のまま。preview再配備は人手手順
+- 2026-08-25 OQ-012の規模を決定（同時1〜5、単語100、履歴50）。p95は未決
+- 2026-08-25 OQ-012のp95目安を約2秒として決定。対象はD1/アプリ内。翻訳・AI判定は対象外
+- 2026-08-25 人間が T15入り `main` を `tango.eitango.workers.dev` へ再配備し smoke 完了を報告。POC-05 liveは未実施
+- 2026-08-25 POC-05 live一部。`issue-synonym` はAI不正解。差し替えは未決
+- 2026-08-25 `issue-synonym` 外れをMVP許容。model/promptは据え置き
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新
+- 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新。本文の要件は変更していない
+- 2026-08-25 人間が本番 Worker に `E2E_AUTH_SECRET` が無いことを確認。値は貼っていない
+- 2026-08-25 MVP残作業リストをクローズ。次の実装は人間が新IDを選んでから追加する

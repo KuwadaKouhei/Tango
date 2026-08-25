@@ -287,7 +287,7 @@ AND (
 )
 ```
 
-先頭 `%` のため `normalized_term` のUNIQUE indexは部分一致では使えない。個人MVPでは許容し、FTSはOQ-012で必要になってから検討する。LIKEの `%` `_` `!` はbind前に `!` でエスケープする。
+先頭 `%` のため `normalized_term` のUNIQUE indexは部分一致では使えない。OQ-012の規模（同時1〜5、1ユーザー100語、履歴50件）では FTS を必須にしない。LIKEの `%` `_` `!` はbind前に `!` でエスケープする。
 
 ### 6.2 苦手優先
 
@@ -308,7 +308,7 @@ SQLへ重み式を埋め込まない。回答回数と直近正誤の列は重�
 
 - D1はFKを常時強制するため、migrationで一時的に順序変更が必要な場合は公式の`PRAGMA defer_foreign_keys`を利用する。
 - D1 `batch()`は途中失敗でsequence全体をrollbackする。単語と意味の作成・置換更新に使う。
-- D1は1DB最大Paid 10GB / Free 500MB（2026-08-20調査値）で、single-threadedにqueryを処理する。OQ-012の件数・同時利用が決まり次第、1件あたり実測容量とp95を計測する。
+- D1は1DB最大Paid 10GB / Free 500MB（2026-08-20調査値）で、single-threadedにqueryを処理する。OQ-012の想定規模は同時1〜5人、1ユーザー100語、履歴50件。アプリ内操作のp95目安は約2秒。この規模では schema を変えない。翻訳・AI判定の timeout 8秒は据え置く。
 - 意味0件、入力上限、正規化、AI metadata条件はapplicationとintegration testで守り、表現可能なものだけDB CHECKでも二重化する。
 - OQ-018の文字数・件数上限はDB CHECKで二重化しない（2026-08-22決定）。Zod schemaとUIの`maxLength`だけで守り、上限を見直すときにmigrationを不要にする。長さ0の拒否は既存CHECKで維持する。
 - ID衝突、時計の逆行、batch失敗をテストする。
@@ -437,3 +437,5 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 - 2026-08-23 T18で検索LIKEのESCAPEを `!` に確定
 - 2026-08-23 remote D1へ同一migrationを適用し、配備WorkerでOAuth/CRUDを確認（POC-04 live）
 - 2026-08-24 T11で苦手候補の LEFT JOIN 集計を実装。重みはSQLに埋め込まない。個人規模の計測はSLOにしない
+- 2026-08-25 OQ-012の規模を記録（同時1〜5、1ユーザー100語、履歴50件）。この規模では FTS を必須にしない。p95は未決
+- 2026-08-25 OQ-012のp95目安を約2秒として記録。対象はD1/アプリ内。翻訳・AI判定は対象外。schemaは変えない

@@ -17,7 +17,7 @@
 | OQ-009 | 単語削除時の回答履歴 | カスケード削除 / 保持して匿名化 / ソフトデリート | T06着手前・初回本番データ投入前 | 決定済み（カスケード削除） |
 | OQ-010 | MVP追加候補 | 検索、重複警告、終了結果、間違い再テスト、AI判定手動修正 | タスク追加前 | 決定済み（検索と終了結果はMVP。他はMVP外） |
 | OQ-011 | Chrome拡張の認証・CORS・配布 | Cookie / トークン、権限、ストア配布 | 将来フェーズ設計時 | 将来 |
-| OQ-012 | 性能目標と想定規模 | p95応答、同時利用者、単語数、履歴数 | 本番公開判定前 | 未決 |
+| OQ-012 | 性能目標と想定規模 | p95応答、同時利用者、単語数、履歴数 | 本番公開判定前 | 決定済み（規模 + p95目安約2秒） |
 
 ## 2. 技術・運用
 
@@ -193,7 +193,7 @@ AI意味判定の提供者は **Workers AI**。利用者決定。翻訳（DeepL�
 | 項目 | 確定値 |
 |---|---|
 | provider | Workers AI（binding `AI`） |
-| model ID | **`@cf/meta/llama-3.1-8b-instruct-fast`**。公式 JSON Mode 対応の instruct。Workers Free と 8 秒 timeout に合わせ 8B を選んだ。live 品質は POC-05 人手確認 |
+| model ID | **`@cf/meta/llama-3.1-8b-instruct-fast`**。公式 JSON Mode 対応の instruct。Workers Free と 8 秒 timeout に合わせ 8B を選んだ。live 品質は POC-05 人手確認。2026-08-25 に `issue-synonym` の外れを **MVPで許容** し、model/prompt は差し替えない |
 | 入力 | 英単語、登録意味、回答のみ。profile / session / OAuth / hint / 履歴は送らない |
 | 出力 | boolean の意味一致。Zodで検証する |
 | timeout | 8秒（wall clock、AbortSignal） |
@@ -202,6 +202,10 @@ AI意味判定の提供者は **Workers AI**。利用者決定。翻訳（DeepL�
 | CI | 通常CIは live call しない。contract mock と固定評価セット |
 
 prompt本文と `prompt_version`（`tango-judge-v1`）はT12で固定し、AI結果行へ保存する。品質が不足したらportのままadapterを差し替える。
+
+#### POC-05 live（2026-08-25）
+
+配備Workerで `issue-synonym` が期待の正解に対し AI 不正解になった。利用者はこれを **MVPで許容** し、model と `tango-judge-v1` は差し替えない。同義の一致は保証しない。公式セットの残り（`issue-unrelated`、`child-kana-kanji`、`computer-long-vowel`）は未実施のまま blocker にしない。
 
 ### OQ-003（2026-08-23）
 
@@ -222,6 +226,21 @@ exact / normalized で決着した場合は従来どおり保存する。
 
 文字色はカード上で **WCAG 2.2 AA**（通常テキスト 4.5:1）を目標とする。薄いパステルなので本文は暗い色を使う。T14で実装（本文 `#1a1816`）。
 
+### OQ-012（2026-08-25）
+
+想定規模と待ちの目安を決めた。利用者提示。CIのSLOゲートは作らない。実装・timeout・schemaは変えない。
+
+| 項目 | 確定値 |
+|---|---|
+| 同時利用者 | **1〜5人** |
+| 1ユーザーあたりの単語 | **100件** |
+| 1ユーザーあたりの回答履歴（`test_results`） | **50件** |
+| p95 応答の目安 | **約2秒**。平均ではなく「100回中95回が収まる秒数」 |
+
+対象は単語一覧・検索・苦手出題・exact/normalized判定など、D1とアプリ内で完結する操作。翻訳とAI判定は対象外。外部待ちであり、既存の timeout 8秒を据え置く。2秒を保証しない。
+
+この規模では一覧の FTS や集計テーブルは足さない。cursor 既定20/上限100はそのまま防御値。T11の local 80語計測（約500ms）は約2秒の内側であり、CIゲートにはしない。
+
 ### OQ-015（2026-08-22）
 
 Cloudflareの料金プランは **Workers Free** とする。利用者決定。
@@ -229,7 +248,7 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 - Paid専用のRate Limiting bindingやUnbound CPU前提の処理をMVPへ入れない。
 - 翻訳はDeepL API Freeの文字数枠で使う。入力長・timeout・ユーザー単位rate limitで消費を抑える。
 - Workers AIのneuron枠はAI判定で使う。model は `@cf/meta/llama-3.1-8b-instruct-fast`。通常CIは live call しない。
-- D1 Freeの容量上限は従来どおり。規模目標はOQ-012が未決のまま。
+- D1 Freeの容量上限は従来どおり。規模はOQ-012（同時1〜5人、1ユーザー100語、履歴50件）。アプリ内操作のp95目安は約2秒。翻訳・AI判定は timeout 8秒。CIのSLOゲートは作らない。
 
 ## 4. 更新手順
 
@@ -255,3 +274,10 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 - 2026-08-25 T14で OQ-007 のカード色を実装。本文色は `#1a1816`
 - 2026-08-25 T15で OQ-012 は未決のまま。CI/E2Eを追加し、本番SLOは固定しない
 - 2026-08-25 T15マージ。MVP実装タスクは完了。残未決は OQ-011（将来）と OQ-012（本番公開判定前）
+- 2026-08-25 T15入り Worker 再配備と smoke を人間実施済みと記録。POC-05 liveは未実施
+- 2026-08-25 POC-05 live一部。`issue-synonym` は期待の正解に対しAI不正解。差し替えは未決
+- 2026-08-25 利用者が `issue-synonym` の外れをMVPで許容。model/promptは差し替えない
+- 2026-08-25 OQ-012の規模を決定（同時1〜5、単語100、履歴50）。p95は未決
+- 2026-08-25 OQ-012のp95目安を約2秒として決定。対象はD1/アプリ内。翻訳・AI判定は timeout 8秒のまま対象外。CIゲートは作らない
+- 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新。本文の要件は変更していない
+- 2026-08-25 MVP残作業リストをクローズ。残未決は OQ-011（将来）
