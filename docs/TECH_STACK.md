@@ -43,7 +43,7 @@
 
 | package/tool | 固定値 | 備考 |
 |---|---:|---|
-| Node.js | 開発機 22.17.1 / 要件 `>=22.12.0` | `engines` とCIで固定する。Workers本番runtimeとは別 |
+| Node.js | CI/開発機 22.17.1 / 要件 `>=22.13.0` | `engines` は pnpm 11.22.0 の下限。CIは 22.17.1 を固定。Workers本番runtimeとは別 |
 | pnpm | 11.22.0 | `packageManager` で固定。設定は `pnpm-workspace.yaml` |
 | TypeScript | 6.0.2 | 公式CLI互換。npm latestの7.0.2は未採用 |
 | React / React DOM | 19.2.8 | Startのpeer範囲内 |
@@ -68,7 +68,7 @@
 | `@tanstack/react-query` | 5.101.4 | 単語一覧・詳細のserver state。T06で導入 |
 | `@playwright/test` | 1.62.1 | T15。Chromiumの主要動線E2E。通常CIはGoogle/DeepL/AIをlive callしない |
 
-Playwright はT15で導入済み。CIは Node 22.12.0 と pnpm 11.22.0 を `engines` / `packageManager` に揃える。
+Playwright はT15で導入済み。CIは Node 22.17.1 と pnpm 11.22.0 を固定する。`engines.node` の下限は `>=22.13.0`（pnpm 11.22.0 が Node 22.13 未満を拒否するため。better-auth の `>=22.12.0` より厳しい）。22.12.0 を CI に置くと `actions/setup-node` の pnpm cache 段階で落ちる。
 
 T01で確認した公式scaffoldとの差:
 

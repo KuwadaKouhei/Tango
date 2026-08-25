@@ -5,7 +5,7 @@
 
 ## 1. 自動化した条件
 
-最終変更後に次が全部成功すること。GitHub Actions が PR / `main` で同じコマンドを回す。
+最終変更後に次が全部成功すること。GitHub Actions が PR / `main` で同じコマンドを回す。ランナーは Node 22.17.1 と pnpm 11.22.0。Node 22.12.0 は pnpm 11.22.0 が動かない。
 
 ```text
 pnpm install --frozen-lockfile

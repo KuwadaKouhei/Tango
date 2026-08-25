@@ -23,8 +23,10 @@ jobs:
           version: 11.22.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.12.0
+          # pnpm 11.22.0 requires Node >=22.13. Pin the documented CI version, not engines minimum.
+          node-version: 22.17.1
           cache: pnpm
+      - run: node -v && pnpm -v
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm lint
@@ -42,8 +44,10 @@ jobs:
           version: 11.22.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.12.0
+          # pnpm 11.22.0 requires Node >=22.13. Pin the documented CI version, not engines minimum.
+          node-version: 22.17.1
           cache: pnpm
+      - run: node -v && pnpm -v
       - run: pnpm install --frozen-lockfile
       - name: Write localhost E2E dummy secrets
         run: cp tests/e2e/dev.vars.ci .dev.vars
