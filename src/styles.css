@@ -22,15 +22,28 @@ legend {
 }
 
 .word-card {
+  width: 100%;
+  max-width: 40rem;
+  color: #1a1816;
   border: 1px solid #ccc;
   border-radius: 8px;
   padding: 1rem;
   margin: 0 0 1rem;
-  max-width: 40rem;
 }
 
 .word-card h2 {
   margin: 0 0 0.5rem;
+}
+
+.word-card a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.word-card a:focus-visible,
+.word-card button:focus-visible {
+  outline: 2px solid #1a1816;
+  outline-offset: 2px;
 }
 
 .word-card-stats {
