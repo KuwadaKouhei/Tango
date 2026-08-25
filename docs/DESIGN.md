@@ -560,7 +560,7 @@ T10時点の意図的な限定:
 - 通常CIはWorkers AIをlive callしない。POC-05の固定評価セットはcontract mock。liveは2026-08-25に `issue-synonym` 外れをMVP許容。model/promptは据え置き。
 - Workers AI bindingは翻訳では使わない。T12の `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDは `@cf/meta/llama-3.1-8b-instruct-fast`。prompt versionは `tango-judge-v1`。
 - wrangler 生成の `AiModels` はこの model ID をまだ含まないため、composition-rootは狭い `run` 口へ委譲する。`wrangler.test.jsonc` には `ai` binding を足さない。
-- T15のE2EはGoogle OAuthをlive callしない。`E2E_AUTH_SECRET` と localhost の `BETTER_AUTH_URL` が揃ったときだけ Better Auth の email/password を開き、Playwrightがsession cookieを保存する。ログイン画面はGoogleのまま。本番httpsでは門を閉じる。
+- T15のE2EはGoogle OAuthをlive callしない。`E2E_AUTH_SECRET` と localhost の `BETTER_AUTH_URL` が揃ったときだけ Better Auth の email/password を開き、Playwrightがsession cookieを保存する。ログイン画面はGoogleのまま。本番httpsでは門を閉じる。本番 Worker に `E2E_AUTH_SECRET` は無い（2026-08-25 人間確認）。
 - E2Eの `vite dev` は `E2E=true` で Cloudflare Vite plugin の `remoteBindings` を閉じる。Workers AI remote proxy は API token が要るためCIでは使わない。exact一致のE2EはAIを呼ばない。
 
 ## 10. 未決事項
@@ -602,3 +602,4 @@ T10時点の意図的な限定:
 - 2026-08-25 `issue-synonym` 外れをMVP許容。model/promptは据え置き
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新
 - 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新。本文の要件は変更していない
+- 2026-08-25 人間が本番 Worker に `E2E_AUTH_SECRET` が無いことを確認。値は貼っていない

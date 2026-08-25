@@ -25,6 +25,10 @@ E2Eは `tests/e2e/dev.vars.ci` のダミー値を `.dev.vars` へコピーして
 |---|---|
 | Git | `.dev.vars` / `.env` / 本番secretはcommitしない。CIのE2Eはダミーのみ |
 | 変数名 | `BETTER_AUTH_SECRET`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`DEEPL_AUTH_KEY`。E2E専用 `E2E_AUTH_SECRET` は本番Workerに置かない |
+| 翻訳 | DeepL API Free。通常CIとE2Eは live call しない |
+| AI | Workers Free の neuron。通常CIは live call しない。model は `@cf/meta/llama-3.1-8b-instruct-fast` |
+| log | 公開errorにSQL/stack/provider本文/secretを出さない。回答・意味・prompt全文は既定logへ出さない |
+| CORS | MVPは same-origin。`BETTER_AUTH_URL` と Origin を照合 |
 
 ### 2.1 実施記録（2026-08-25）
 
@@ -37,13 +41,9 @@ E2Eは `tests/e2e/dev.vars.ci` のダミー値を `.dev.vars` へコピーして
 | `wrangler.jsonc` の `vars` | `BETTER_AUTH_URL` のみ。`E2E_AUTH_SECRET` を置いた履歴も無い |
 | GitHub Actions | `deploy.yml` は無い。E2E は CI runner 上で `tests/e2e/dev.vars.ci` を `.dev.vars` へコピーするだけ |
 | コードの門 | `isLocalE2eAuthEnabled` は `E2E_AUTH_SECRET` あり、かつ `http://localhost` または `http://127.0.0.1` のときだけ開く。本番 `https://tango.eitango.workers.dev` では開かない |
-| 本番 Worker の secret 名一覧 | **未実施**。Cloud Agent に Cloudflare token が無い。手元で `pnpm exec wrangler secret list` を実行し、名前に `E2E_AUTH_SECRET` が無いか確認する。値は貼らない |
+| 本番 Worker の secret 名一覧 | 人間が `wrangler secret list` を実施。**`E2E_AUTH_SECRET` は存在しない**。値は貼っていない |
 
-`E2E_AUTH_SECRET` が本番に乗っていたら `pnpm exec wrangler secret delete E2E_AUTH_SECRET` で消す。値はチャットへ貼らない。
-| 翻訳 | DeepL API Free。通常CIとE2Eは live call しない |
-| AI | Workers Free の neuron。通常CIは live call しない。model は `@cf/meta/llama-3.1-8b-instruct-fast` |
-| log | 公開errorにSQL/stack/provider本文/secretを出さない。回答・意味・prompt全文は既定logへ出さない |
-| CORS | MVPは same-origin。`BETTER_AUTH_URL` と Origin を照合 |
+今後も本番 Worker に `E2E_AUTH_SECRET` を置かない。
 
 ## 3. migration rehearsal
 
@@ -98,3 +98,4 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 - 2026-08-25 OQ-012のp95目安を約2秒として決定。翻訳・AI判定は対象外。CIゲートは作らない
 - 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新
 - 2026-08-25 Git上の `.dev.vars` 非commitと `wrangler.jsonc` に `E2E_AUTH_SECRET` が無いことを確認。本番 Worker の secret 名一覧は手元確認待ち
+- 2026-08-25 人間が本番 Worker の secret 名一覧を確認。`E2E_AUTH_SECRET` は存在しない。値は貼っていない

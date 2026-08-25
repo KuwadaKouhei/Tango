@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。POC-05 liveは条件付き合格。OQ-012は決定済み。`docs/REQUIREMENTS.md` は人間レビュー済み。本番 Worker の `E2E_AUTH_SECRET` 非設置は手元確認待ち。OQ-011は将来。
+> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。POC-05 liveは条件付き合格。OQ-012は決定済み。`docs/REQUIREMENTS.md` は人間レビュー済み。本番 Worker に `E2E_AUTH_SECRET` は無い。OQ-011は将来。
 
 ## 最優先ルール
 
@@ -128,5 +128,5 @@
 - OQ-002/003/004/005/006/007/010: 2026-08-23決定済み。詳細は `docs/OPEN_QUESTIONS.md` 3節。
 - T01〜T18: マージ済み。MVP実装タスクは完了。
 - POC-03/04/06: 2026-08-23に配備Workerでlive確認済み。POC-05はコード側合格、liveは2026-08-25に条件付き合格（`issue-synonym` 外れをMVP許容）。
-- 残未決は OQ-011（Chrome拡張）。OQ-012は2026-08-25決定（同時1〜5、単語100、履歴50、アプリ内p95目安約2秒。翻訳・AI判定は timeout 8秒）。`docs/REQUIREMENTS.md` は2026-08-25に人間レビュー済み。本番 Worker の `E2E_AUTH_SECRET` 非設置は手元の `wrangler secret list` 待ち。T12の model ID は `@cf/meta/llama-3.1-8b-instruct-fast`。
+- 残未決は OQ-011（Chrome拡張）。OQ-012は2026-08-25決定（同時1〜5、単語100、履歴50、アプリ内p95目安約2秒。翻訳・AI判定は timeout 8秒）。`docs/REQUIREMENTS.md` は2026-08-25に人間レビュー済み。本番 Worker に `E2E_AUTH_SECRET` は無い（2026-08-25 人間確認）。T12の model ID は `@cf/meta/llama-3.1-8b-instruct-fast`。
 - 各タスク前: TASKSの意思決定列にあるOQ。
