@@ -266,7 +266,7 @@ GET /api/v1/words?limit=20&cursor=opaque&q=
 
 `q` は任意。trim後0文字または未指定は通常一覧。trim後1〜100文字。`normalizeTerm(q)` が `words.normalized_term` に部分一致するか、`normalizeMeaning(q)` がいずれかの `word_meanings.normalized_meaning` に部分一致すればヒットする。所有者scope必須。他ユーザーはヒットしない。LIKEの `%` `_` `!` は `!` でエスケープする。空結果は `items: []`。
 
-`limit`未指定は20。上限100はOQ-012未決のため防御値。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
+`limit`未指定は20。上限100は防御値（OQ-012の1ユーザー100語と一致）。`accuracy`は回答0件で`null`、回答済み0%は`0`。cursorは`(created_at,id)`のopaque値。
 
 ```json
 200 OK
@@ -462,7 +462,7 @@ session.user.id + wordIdで単語と全意味を取得
   - `weight = max(1 - accuracy, 0.05)`
   - 回答回数と直近正誤は見ない。
 - クライアントは出した `wordId` を `excludeWordIds` へ蓄積し、`plannedCount` 件回答するか `question === null` で終了結果へ進む。
-- MVPは個人データ規模で全候補を扱う。OQ-012が大規模ならquery方式を再設計する。
+- MVPは個人データ規模で全候補を扱う。OQ-012の想定は同時1〜5人、1ユーザー100語、履歴50件。これを超えるならquery方式を再設計する。
 
 ### 6.5 統計
 
@@ -565,7 +565,7 @@ T10時点の意図的な限定:
 
 ## 10. 未決事項
 
-- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）と OQ-012（本番規模）だけ。
+- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）と OQ-012 の p95 応答目標。規模（同時1〜5、単語100、履歴50）は2026-08-25決定。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Googleは2026-08-23に配備Workerで確認済み。
 - T08/T17: 翻訳はDeepL API Free。POC-06のlive確認は2026-08-23に配備Workerで実施済み。
@@ -595,6 +595,7 @@ T10時点の意図的な限定:
 - 2026-08-24 T13で今回テストの終了結果をクライアント集計で表示。別URLは作らない
 - 2026-08-25 T14で一覧カード背景をOQ-007のHSL線形補間にし、未回答と0%を文字でも区別する
 - 2026-08-25 T15でCIとPlaywright E2Eを追加。OQ-012は未決のまま。preview再配備は人手手順
+- 2026-08-25 OQ-012の規模を決定（同時1〜5、単語100、履歴50）。p95は未決
 - 2026-08-25 人間が T15入り `main` を `tango.eitango.workers.dev` へ再配備し smoke 完了を報告。POC-05 liveは未実施
 - 2026-08-25 POC-05 live一部。`issue-synonym` はAI不正解。差し替えは未決
 - 2026-08-25 `issue-synonym` 外れをMVP許容。model/promptは据え置き
