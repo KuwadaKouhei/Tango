@@ -10,7 +10,7 @@ describe('formatWordStatsLabel', () => {
         total: 0,
         accuracy: null,
       }),
-    ).toBe('未回答')
+    ).toBe('未回答（正解 0 / 回答 0）')
     expect(
       formatWordStatsLabel({
         status: 'answered',

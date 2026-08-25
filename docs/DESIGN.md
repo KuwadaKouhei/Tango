@@ -474,7 +474,7 @@ LEFT JOIN words -> test_results
                 : status=answered, accuracy=correct/total
 ```
 
-UIは`accuracy === null`を白 `#ffffff`、回答済みは OQ-007 のHSL補間（0% `hsl(0 70% 88%)` → 100% `hsl(95 55% 82%)`）へ渡し、必ず文字列も併記する。実装はT14。
+UIは`masteryCardBackground`へ`accuracy`を渡す。未回答（`accuracy === null`）は白 `#ffffff`、回答済みは OQ-007 のHSL線形補間（0% `hsl(0 70% 88%)` → 100% `hsl(95 55% 82%)`、50% は `hsl(47.5 62.5% 85%)`）。段階パレットは使わない。本文色は `#1a1816`。未回答は `未回答（正解 0 / 回答 0）`、回答済みは `正解率 n%（正解 a / 回答 b）` を併記する。
 
 ## 7. 横断的関心事
 
@@ -547,7 +547,7 @@ T10時点の意図的な限定:
 - clientのAPI呼び出しは `src/platform/fetch-json.ts` を通す。通信断やHTMLエラーページで`fetch`/`json()`がthrowすると、ブラウザ生成の英語メッセージがそのまま`role="alert"`へ出るため、ここで日本語の失敗結果へ畳む。204は本文なし成功として扱う。翻訳と単語で共用するため platform へ昇格した。
 - 保存成功後の cache 無効化は `refetchType: 'none'`。離脱する画面のrefetch完了を待たず、遷移先のmountでstale判定により取り直す。
 - 乱数をDOMの`id`へ入れない。SSRとhydrationで値が食い違うため、意味入力欄のidは並び順から作り、`crypto.randomUUID()`はReactの`key`だけに使う。
-- カード色の補間はOQ-007。実装はT14。一覧は未回答と正解率を文字でも示す。
+- カード色の補間はOQ-007。T14で `features/words/domain/mastery-card-color.ts` に置き、一覧カードへ inline background として渡す。CSS分割はせず `src/styles.css` の `.word-card` に幅・暗い本文・`:focus-visible` を足す。リンクは `color: inherit` と下線で、パステル上の既定青リンク対比切れを避ける。
 - T09は出題とヒントまで。回答の判定APIはT10で追加した。苦手優先の抽選はT11で追加した。
 - T10のlocal不一致は、DBの `judge_type` が `exact|normalized|ai` しか置けないため、AI portが無いときだけ `normalized` + `isCorrect:false` で保存する。第4のenumは作らない。T13は `!isCorrect && !judgedByAi` を「一致しませんでした」と見せる。
 - 本番の `POST /api/v1/study/answers` は `SemanticJudge` を注入する。exact/normalizedで決着したらAIを呼ばない。不一致時だけ最大1回。通常CIの signed-in harness は live binding を避けるため `null` または mock を渡す。
@@ -591,4 +591,5 @@ T10時点の意図的な限定:
 - 2026-08-24 T11で `weak` の OQ-006 重み付き抽選を実装。random の一様抽選は変えない
 - 2026-08-24 T12で Workers AI JSON Mode の意味判定を結線。model は `@cf/meta/llama-3.1-8b-instruct-fast`。契約外JSONは503
 - 2026-08-24 T13で今回テストの終了結果をクライアント集計で表示。別URLは作らない
+- 2026-08-25 T14で一覧カード背景をOQ-007のHSL線形補間にし、未回答と0%を文字でも区別する
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新

@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T13で今回テストの終了結果UIを追加済み**
+> 状態: **T14で一覧カードの正解率色を追加済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -60,6 +60,7 @@ Tango/
 │   │   │   │   ├── input-limits.ts
 │   │   │   │   ├── prepare-word.ts
 │   │   │   │   ├── word-stats.ts
+│   │   │   │   ├── mastery-card-color.ts
 │   │   │   │   ├── word-list-page.ts
 │   │   │   │   ├── word-list-cursor.ts
 │   │   │   │   ├── word-list-search.ts
@@ -185,7 +186,7 @@ Tango/
 │   │   │       └── request-id.ts
 │   │   └── composition-root.ts
 │   ├── env.d.ts                       # .dev.vars の secret 型。wrangler types と merge
-│   ├── styles.css                     # T01公式blank。カード色追加時に分割してよい
+│   ├── styles.css                     # T01公式blank。T14のカード色はここに残す
 │   ├── router.tsx
 │   ├── routeTree.gen.ts               # TanStack生成。手編集禁止
 │   └── server.ts                      # Hono / Start fetch dispatch
@@ -320,6 +321,12 @@ composition-root -> application + infrastructure
 1. 新featureは作らず `features/words` の list use case / schema / 一覧UIへ `q` を足す。
 2. FTSテーブルは作らない。
 
+### 6.5 正解率カード色（OQ-007採用、T14）
+
+1. 色の式は `features/words/domain/mastery-card-color.ts` の純粋関数へ置く。routeやCSS変数へ式を埋め込まない。
+2. 段階パレットは作らない。未回答と0%は背景と文字labelの両方で分ける。
+3. カード用CSSは件数少ないので `src/styles.css` に残す。分割はルールが増えてからでよい。
+
 ## 7. framework規約との整合
 
 - TanStack Router推奨のfile-based routingと`src/routes`、生成`src/routeTree.gen.ts`を利用する。
@@ -334,7 +341,7 @@ composition-root -> application + infrastructure
 
 ## 9. 未決事項
 
-- T01で確定したscaffold差: aliasは `#/*`、CSSは `src/styles.css`、Prettier設定は `prettier.config.js`、Start middleware用 `src/start.ts` は未生成（必要になったタスクで追加）。
+- T01で確定したscaffold差: aliasは `#/*`、CSSは `src/styles.css`（T14のカード色も分割せず残す）、Prettier設定は `prettier.config.js`、Start middleware用 `src/start.ts` は未生成（必要になったタスクで追加）。
 - T02で確定: Drizzle KitのSQLは `drizzle/` 直下（`drizzle/migrations/` ではない）。secret型は `src/env.d.ts` で Cloudflare.Env へ mergeする。
 - AI/翻訳providerがWorkers bindingでなくHTTP APIの場合も、adapter配置は変えない。
 - T10で `features/study/domain/normalize-for-judgement.ts` を追加した。保存用 normalize とは分ける。`SemanticJudge` portはT10で型と呼び出し点を用意し、Workers AI adapterはT12で追加した。
@@ -367,3 +374,4 @@ composition-root -> application + infrastructure
 - 2026-08-24 T11で weakness-weight と重み付き抽選を追加。苦手候補queryは words LEFT JOIN test_results
 - 2026-08-24 T12で Workers AI semantic judge adapter、ai-judge-limits/prompt、contract/eval test を追加
 - 2026-08-24 T13で summarize-study-session と終了結果UIを追加。別の `/history` route は作らない
+- 2026-08-25 T14で mastery-card-color を追加。カード色CSSは styles.css に残す

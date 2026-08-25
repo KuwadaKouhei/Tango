@@ -5,6 +5,7 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query'
+import { masteryCardSurfaceStyle } from '../domain/mastery-card-color'
 import { formatWordStatsLabel } from './format-word-stats'
 import { listWordsRequest } from './list-words-request'
 import { deleteWordRequest } from './word-detail-request'
@@ -156,7 +157,10 @@ function WordCard({
   onConfirmDelete: () => void
 }) {
   return (
-    <article className="word-card">
+    <article
+      className="word-card"
+      style={masteryCardSurfaceStyle(word.stats.accuracy)}
+    >
       <h2>{word.term}</h2>
       <ol>
         {word.meanings.map((meaning) => (
