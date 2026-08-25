@@ -81,3 +81,4 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 - 2026-08-25 `issue-synonym` 外れをMVP許容。model/promptは据え置き
 - 2026-08-25 OQ-012の規模を決定（同時1〜5、単語100、履歴50）。p95は未決
 - 2026-08-25 OQ-012のp95目安を約2秒として決定。翻訳・AI判定は対象外。CIゲートは作らない
+- 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新
