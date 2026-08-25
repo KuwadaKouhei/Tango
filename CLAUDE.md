@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。残る未決は OQ-012（本番規模・SLO）。OQ-011は将来。POC-05 live品質とWorkers preview再配備は人手確認が残る。
+> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。T15入り Worker 再配備と smoke は 2026-08-25 に人間が実施。残る未決は OQ-012（本番規模・SLO）。OQ-011は将来。POC-05 live品質は人手確認が残る。
 
 ## 最優先ルール
 

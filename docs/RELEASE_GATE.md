@@ -1,6 +1,6 @@
 # リリースゲート（T15）
 
-> 状態: **T15マージ済み。CIとE2Eは自動化。Workers previewへの再配備はこの環境では未実施。**
+> 状態: **T15マージ済み。CIとE2Eは自動化。T15入り `main` の Worker 再配備と smoke は 2026-08-25 に人間が実施。**
 > OQ-012（本番規模・SLO）は未決のまま固定しない。本番公開判定の前に人間が決める。
 
 ## 1. 自動化した条件
@@ -41,7 +41,7 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 
 ## 4. preview 配備手順（人手）
 
-このCloud Agent環境には Cloudflare 配備tokenがないため、T15では remote preview を再実行していない。人間が次を同じconfigで行う。
+同じ `wrangler.jsonc` と `drizzle/` で、手元から次を行う。Cloud Agent の VM には Cloudflare 配備tokenがない。
 
 1. 本番と同じ `wrangler.jsonc` と `drizzle/` を使う。
 2. secretはWorkers secretへ。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけ。
@@ -49,7 +49,14 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 4. remote D1へ未適用migrationがあれば `wrangler d1 migrations apply tango --remote`。
 5. smoke: Google login、単語CRUD、検索、テスト1問（exact）、一覧統計。翻訳とAIは既存POCを再利用し、通常は live を増やさない。
 
-2026-08-23 の配備Workerで POC-03/04/06 は live 合格済み。POC-05 live品質は未実施のまま。
+### 4.1 実施記録
+
+| 日 | 対象 | 実施 | 結果 |
+|---|---|---|---|
+| 2026-08-23 | 当時の配備Worker | POC-03/04/06 live | 合格。POC-05 liveは未実施 |
+| 2026-08-25 | T15マージ後の `main` を `https://tango.eitango.workers.dev` へ `wrangler deploy` | RELEASE_GATE 4節の smoke（login、CRUD、検索、exact 1問、統計） | 人間が完了を報告。Cloud Agent は Google 動線を直接観察していない。翻訳とAIの live は増やしていない |
+
+`0000`〜`0003` は 2026-08-23 に remote D1 へ適用済み。T15再配備で新しい migration は無い。POC-05 live品質は未実施のまま。
 
 ## 5. OQ-012
 
@@ -63,3 +70,4 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 
 - 2026-08-25 T15初版。CI/E2Eを自動化。preview再配備は人手手順のみ
 - 2026-08-25 T15マージ済み。OQ-012とpreview再配備・POC-05 liveは残作業
+- 2026-08-25 人間が T15入り `main` を `tango.eitango.workers.dev` へ再配備し smoke 完了を報告。POC-05 liveとOQ-012は残作業
