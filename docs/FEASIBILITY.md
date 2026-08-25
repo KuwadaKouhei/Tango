@@ -159,3 +159,4 @@
 - 2026-08-24 T11で所有80語の苦手抽選を計測。SLOは固定しない
 - 2026-08-24 T12で POC-05 をコード側合格とし、model を `@cf/meta/llama-3.1-8b-instruct-fast` にlock。live品質は未実施
 - 2026-08-25 T14でカード色のHSL線形補間を実装。通常CIは色計算のunit testのみ
+- 2026-08-25 T15でGitHub ActionsとPlaywright E2Eを追加。OQ-012のSLOは未決

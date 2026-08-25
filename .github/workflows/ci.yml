@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@v4
+        with:
+          # pnpm 11.22.0 requires Node >=22.13. Pin the documented CI version, not engines minimum.
+          node-version: 22.17.1
+          cache: pnpm
+      - run: node -v && pnpm -v
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@v4
+        with:
+          # pnpm 11.22.0 requires Node >=22.13. Pin the documented CI version, not engines minimum.
+          node-version: 22.17.1
+          cache: pnpm
+      - run: node -v && pnpm -v
+      - run: pnpm install --frozen-lockfile
+      - name: Write localhost E2E dummy secrets
+        run: cp tests/e2e/dev.vars.ci .dev.vars
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-output
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore

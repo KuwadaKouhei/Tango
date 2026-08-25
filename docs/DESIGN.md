@@ -560,6 +560,8 @@ T10時点の意図的な限定:
 - 通常CIはWorkers AIをlive callしない。POC-05の固定評価セットはcontract mock。live品質は配備Workerでの人手確認（未実施）。
 - Workers AI bindingは翻訳では使わない。T12の `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDは `@cf/meta/llama-3.1-8b-instruct-fast`。prompt versionは `tango-judge-v1`。
 - wrangler 生成の `AiModels` はこの model ID をまだ含まないため、composition-rootは狭い `run` 口へ委譲する。`wrangler.test.jsonc` には `ai` binding を足さない。
+- T15のE2EはGoogle OAuthをlive callしない。`E2E_AUTH_SECRET` と localhost の `BETTER_AUTH_URL` が揃ったときだけ Better Auth の email/password を開き、Playwrightがsession cookieを保存する。ログイン画面はGoogleのまま。本番httpsでは門を閉じる。
+- E2Eの `vite dev` は `E2E=true` で Cloudflare Vite plugin の `remoteBindings` を閉じる。Workers AI remote proxy は API token が要るためCIでは使わない。exact一致のE2EはAIを呼ばない。
 
 ## 10. 未決事項
 
@@ -592,4 +594,5 @@ T10時点の意図的な限定:
 - 2026-08-24 T12で Workers AI JSON Mode の意味判定を結線。model は `@cf/meta/llama-3.1-8b-instruct-fast`。契約外JSONは503
 - 2026-08-24 T13で今回テストの終了結果をクライアント集計で表示。別URLは作らない
 - 2026-08-25 T14で一覧カード背景をOQ-007のHSL線形補間にし、未回答と0%を文字でも区別する
+- 2026-08-25 T15でCIとPlaywright E2Eを追加。OQ-012は未決のまま。preview再配備は人手手順
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新

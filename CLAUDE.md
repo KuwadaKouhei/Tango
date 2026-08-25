@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T14（正解率カード色とアクセシビリティ）PR中。ブランチは `cursor/t14-mastery-visuals-4bb7`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
+> 現在地: T15（CI・E2E・preview release gate）PR中。ブランチは `cursor/t15-release-gate-4bb7`。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。
 
 ## 最優先ルール
 
@@ -32,6 +32,8 @@
 | `docs/DATABASE.md` | D1 schema、ER図、FK、index、migration | DB・repository・migration変更時 |
 | `docs/DIRECTORY_STRUCTURE.md` | 配置、命名、import方向 | ファイルの追加・移動時 |
 | `docs/TASKS.md` | T01〜T15の実装駆動表 | 次タスク、依存、AC、状態を確認するとき |
+| `docs/TEST_TRACEABILITY.md` | ACとtestの対応 | T15以降のgateとPRで追跡するとき |
+| `docs/RELEASE_GATE.md` | CI/E2E/preview手順 | リリース条件、secret、rollbackを確認するとき |
 
 ## 文書の優先順位
 
@@ -124,7 +126,7 @@
 - OQ-008/009/018: 2026-08-22に決定済み。
 - OQ-001/015: 2026-08-23再決定。DeepL API Free、Workers Free。secret名は `DEEPL_AUTH_KEY`。
 - OQ-002/003/004/005/006/007/010: 2026-08-23決定済み。詳細は `docs/OPEN_QUESTIONS.md` 3節。
-- T01〜T13, T16, T17, T18: マージ済み。T14はPR中。
+- T01〜T14, T16, T17, T18: マージ済み。T15はPR中。
 - POC-03/04/06: 2026-08-23に配備Workerでlive確認済み。POC-05はコード側合格、live未実施。
 - 残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。T12の model ID は `@cf/meta/llama-3.1-8b-instruct-fast`。
 - 各タスク前: TASKSの意思決定列にあるOQ。

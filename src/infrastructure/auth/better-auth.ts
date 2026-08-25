@@ -4,6 +4,7 @@ import { createDb } from '../db/drizzle'
 import type { AuthBindings } from '../../server/api/bindings'
 import { readRequiredBinding } from '../../server/api/bindings'
 import * as authSchema from '../db/schema/auth.generated'
+import { isLocalE2eAuthEnabled } from './e2e-auth-gate'
 
 export const createAuth = (bindings: AuthBindings) => {
   const db = createDb(bindings)
@@ -11,6 +12,10 @@ export const createAuth = (bindings: AuthBindings) => {
     'BETTER_AUTH_URL',
     bindings.BETTER_AUTH_URL,
   )
+  const e2eEmailAuth = isLocalE2eAuthEnabled({
+    betterAuthUrl: baseURL,
+    e2eAuthSecret: bindings.E2E_AUTH_SECRET,
+  })
 
   return betterAuth({
     baseURL,
@@ -23,6 +28,11 @@ export const createAuth = (bindings: AuthBindings) => {
       schema: authSchema,
       transaction: false,
     }),
+    emailAndPassword: {
+      enabled: e2eEmailAuth,
+      disableSignUp: !e2eEmailAuth,
+      requireEmailVerification: false,
+    },
     socialProviders: {
       google: {
         clientId: readRequiredBinding(

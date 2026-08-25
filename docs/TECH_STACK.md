@@ -1,7 +1,7 @@
 # 技術スタック選定: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **T06で `@tanstack/react-query` 5.101.4 をlockfileへ追加済み（OQ-013/OQ-014）。T17で翻訳をDeepL API Freeに固定（OQ-001再決定）**
+> 状態: **T15で `@playwright/test` 1.62.1 と GitHub Actions CI を追加。T17で翻訳をDeepL API Freeに固定（OQ-001再決定）**
 > 要件で指定された中核スタックを尊重し、公式CLIとnpmレジストリで互換セットを確認した。以後の更新は独立PRでbuild/testを再実行する。
 
 ## 1. 選定方針
@@ -43,7 +43,7 @@
 
 | package/tool | 固定値 | 備考 |
 |---|---:|---|
-| Node.js | 開発機 22.17.1 / 要件 `>=22.12.0` | `engines` とCIで固定する。Workers本番runtimeとは別 |
+| Node.js | CI/開発機 22.17.1 / 要件 `>=22.13.0` | `engines` は pnpm 11.22.0 の下限。CIは 22.17.1 を固定。Workers本番runtimeとは別 |
 | pnpm | 11.22.0 | `packageManager` で固定。設定は `pnpm-workspace.yaml` |
 | TypeScript | 6.0.2 | 公式CLI互換。npm latestの7.0.2は未採用 |
 | React / React DOM | 19.2.8 | Startのpeer範囲内 |
@@ -66,8 +66,9 @@
 | `drizzle-kit` | 0.31.10 | SQL migration生成。出力先は `drizzle/` |
 | `zod` | 4.4.3 | HTTP入力のruntime検証。T03で導入 |
 | `@tanstack/react-query` | 5.101.4 | 単語一覧・詳細のserver state。T06で導入 |
+| `@playwright/test` | 1.62.1 | T15。Chromiumの主要動線E2E。通常CIはGoogle/DeepL/AIをlive callしない |
 
-Playwright は未導入。各タスクで追加し、この表へ exact versionを追記する。
+Playwright はT15で導入済み。CIは Node 22.17.1 と pnpm 11.22.0 を固定する。`engines.node` の下限は `>=22.13.0`（pnpm 11.22.0 が Node 22.13 未満を拒否するため。better-auth の `>=22.12.0` より厳しい）。22.12.0 を CI に置くと `actions/setup-node` の pnpm cache 段階で落ちる。
 
 T01で確認した公式scaffoldとの差:
 
@@ -194,3 +195,4 @@ T02の比較結果: アプリテーブルもDrizzleにする（T03）ため、�
 - 2026-08-23 T17で翻訳providerを DeepL API Free に再固定（OQ-001）。secret名は `DEEPL_AUTH_KEY`
 - 2026-08-23 OQ-002決定。AI判定の提供者はWorkers AI。model IDはT12 POC-05でlock
 - 2026-08-24 T12で判定modelを `@cf/meta/llama-3.1-8b-instruct-fast` にlock。prompt version は `tango-judge-v1`
+- 2026-08-25 T15で `@playwright/test` 1.62.1 と GitHub Actions CI を追加

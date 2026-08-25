@@ -253,3 +253,4 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 - 2026-08-23 POC-06のDeepL live確認を配備Workerで実施済みと記録
 - 2026-08-24 T12で OQ-002 の model ID を `@cf/meta/llama-3.1-8b-instruct-fast` にlock。POC-05 liveは未実施
 - 2026-08-25 T14で OQ-007 のカード色を実装。本文色は `#1a1816`
+- 2026-08-25 T15で OQ-012 は未決のまま。CI/E2Eを追加し、本番SLOは固定しない
