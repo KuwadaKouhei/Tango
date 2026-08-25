@@ -1,6 +1,6 @@
 # リリースゲート（T15）
 
-> 状態: **T15マージ済み。CIとE2Eは自動化。T15入り `main` の Worker 再配備と smoke は 2026-08-25 に人間が実施。**
+> 状態: **T15マージ済み。CIとE2Eは自動化。T15入り `main` の Worker 再配備と smoke は 2026-08-25 に人間が実施。MVP残作業リストはクローズ。**
 > OQ-012 は決定済み（同時1〜5、単語100、履歴50、アプリ内p95目安約2秒）。CIのSLOゲートは作らない。
 
 ## 1. 自動化した条件
@@ -99,3 +99,4 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 - 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新
 - 2026-08-25 Git上の `.dev.vars` 非commitと `wrangler.jsonc` に `E2E_AUTH_SECRET` が無いことを確認。本番 Worker の secret 名一覧は手元確認待ち
 - 2026-08-25 人間が本番 Worker の secret 名一覧を確認。`E2E_AUTH_SECRET` は存在しない。値は貼っていない
+- 2026-08-25 MVP残作業リストをクローズ。次の実装は人間が新IDを選んでから追加する

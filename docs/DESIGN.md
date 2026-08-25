@@ -565,7 +565,7 @@ T10時点の意図的な限定:
 
 ## 10. 未決事項
 
-- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）。OQ-012は2026-08-25決定（同時1〜5、単語100、履歴50、アプリ内p95目安約2秒。翻訳・AI判定は timeout 8秒）。`docs/REQUIREMENTS.md` は2026-08-25に人間レビュー済み。
+- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張・将来）。MVP残作業リストは2026-08-25にクローズ。次の実装は人間が新IDを選んでから追加する。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Googleは2026-08-23に配備Workerで確認済み。
 - T08/T17: 翻訳はDeepL API Free。POC-06のlive確認は2026-08-23に配備Workerで実施済み。
@@ -603,3 +603,4 @@ T10時点の意図的な限定:
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新
 - 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新。本文の要件は変更していない
 - 2026-08-25 人間が本番 Worker に `E2E_AUTH_SECRET` が無いことを確認。値は貼っていない
+- 2026-08-25 MVP残作業リストをクローズ。次の実装は人間が新IDを選んでから追加する
