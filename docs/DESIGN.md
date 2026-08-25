@@ -565,7 +565,7 @@ T10時点の意図的な限定:
 
 ## 10. 未決事項
 
-- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）と OQ-012 の p95 応答目標。規模（同時1〜5、単語100、履歴50）は2026-08-25決定。
+- 残未決は `OPEN_QUESTIONS.md` の OQ-011（Chrome拡張）。OQ-012は2026-08-25決定（同時1〜5、単語100、履歴50、アプリ内p95目安約2秒。翻訳・AI判定は timeout 8秒）。
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Googleは2026-08-23に配備Workerで確認済み。
 - T08/T17: 翻訳はDeepL API Free。POC-06のlive確認は2026-08-23に配備Workerで実施済み。
@@ -596,6 +596,7 @@ T10時点の意図的な限定:
 - 2026-08-25 T14で一覧カード背景をOQ-007のHSL線形補間にし、未回答と0%を文字でも区別する
 - 2026-08-25 T15でCIとPlaywright E2Eを追加。OQ-012は未決のまま。preview再配備は人手手順
 - 2026-08-25 OQ-012の規模を決定（同時1〜5、単語100、履歴50）。p95は未決
+- 2026-08-25 OQ-012のp95目安を約2秒として決定。対象はD1/アプリ内。翻訳・AI判定は対象外
 - 2026-08-25 人間が T15入り `main` を `tango.eitango.workers.dev` へ再配備し smoke 完了を報告。POC-05 liveは未実施
 - 2026-08-25 POC-05 live一部。`issue-synonym` はAI不正解。差し替えは未決
 - 2026-08-25 `issue-synonym` 外れをMVP許容。model/promptは据え置き

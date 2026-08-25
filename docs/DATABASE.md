@@ -308,7 +308,7 @@ SQLへ重み式を埋め込まない。回答回数と直近正誤の列は重�
 
 - D1はFKを常時強制するため、migrationで一時的に順序変更が必要な場合は公式の`PRAGMA defer_foreign_keys`を利用する。
 - D1 `batch()`は途中失敗でsequence全体をrollbackする。単語と意味の作成・置換更新に使う。
-- D1は1DB最大Paid 10GB / Free 500MB（2026-08-20調査値）で、single-threadedにqueryを処理する。OQ-012の想定規模は同時1〜5人、1ユーザー100語、履歴50件。この規模では schema を変えない。p95 応答目標は未決。
+- D1は1DB最大Paid 10GB / Free 500MB（2026-08-20調査値）で、single-threadedにqueryを処理する。OQ-012の想定規模は同時1〜5人、1ユーザー100語、履歴50件。アプリ内操作のp95目安は約2秒。この規模では schema を変えない。翻訳・AI判定の timeout 8秒は据え置く。
 - 意味0件、入力上限、正規化、AI metadata条件はapplicationとintegration testで守り、表現可能なものだけDB CHECKでも二重化する。
 - OQ-018の文字数・件数上限はDB CHECKで二重化しない（2026-08-22決定）。Zod schemaとUIの`maxLength`だけで守り、上限を見直すときにmigrationを不要にする。長さ0の拒否は既存CHECKで維持する。
 - ID衝突、時計の逆行、batch失敗をテストする。
@@ -438,3 +438,4 @@ CREATE INDEX `idx_words_user_normalized_term` ON `words` (`user_id`,`normalized_
 - 2026-08-23 remote D1へ同一migrationを適用し、配備WorkerでOAuth/CRUDを確認（POC-04 live）
 - 2026-08-24 T11で苦手候補の LEFT JOIN 集計を実装。重みはSQLに埋め込まない。個人規模の計測はSLOにしない
 - 2026-08-25 OQ-012の規模を記録（同時1〜5、1ユーザー100語、履歴50件）。この規模では FTS を必須にしない。p95は未決
+- 2026-08-25 OQ-012のp95目安を約2秒として記録。対象はD1/アプリ内。翻訳・AI判定は対象外。schemaは変えない
