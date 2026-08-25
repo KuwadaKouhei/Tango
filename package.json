@@ -22,6 +22,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "auth:generate": "auth generate --config src/infrastructure/auth/better-auth.cli.ts --output src/infrastructure/db/schema/auth.generated.ts -y",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply tango --local"
@@ -41,6 +42,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.53.0",
     "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@playwright/test": "1.62.1",
     "@tanstack/eslint-config": "0.4.0",
     "@tanstack/router-cli": "1.167.32",
     "@types/node": "22.20.1",

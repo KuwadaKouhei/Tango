@@ -1,0 +1,7 @@
+# CI / local Playwright 用のダミー値。本番secretではない。
+BETTER_AUTH_SECRET=ci-e2e-better-auth-secret-32ch!!
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=e2e-google-client-id
+GOOGLE_CLIENT_SECRET=e2e-google-client-secret
+DEEPL_AUTH_KEY=e2e-deepl-auth-key-not-used
+E2E_AUTH_SECRET=e2e-session-seed-secret-32chars!!

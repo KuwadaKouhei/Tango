@@ -26,6 +26,11 @@ export default [
       '.output/**',
       '.wrangler/**',
       '.tanstack/**',
+      'playwright-report/**',
+      'test-results/**',
+      'playwright/.auth/**',
+      'playwright.config.ts',
+      'tests/e2e/**',
     ],
   },
 ]

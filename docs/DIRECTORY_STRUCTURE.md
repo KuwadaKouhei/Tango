@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T14で一覧カードの正解率色を追加済み**
+> 状態: **T15でCIとPlaywright E2Eを追加済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -34,7 +34,9 @@ Tango/
 │   ├── DESIGN.md
 │   ├── DATABASE.md
 │   ├── DIRECTORY_STRUCTURE.md
-│   └── TASKS.md
+│   ├── TASKS.md
+│   ├── TEST_TRACEABILITY.md           # AC-001〜015のtest追跡。T15
+│   └── RELEASE_GATE.md                # CI/E2E/preview手順。T15
 ├── drizzle/
 │   ├── 0000_calm_lady_deathstrike.sql # T02 Better Auth。Drizzle Kit生成
 │   └── meta/                          # Drizzle Kit生成物。手編集禁止
@@ -140,6 +142,7 @@ Tango/
 │   │   ├── auth/
 │   │   │   ├── better-auth.ts
 │   │   │   ├── better-auth.cli.ts     # `auth generate` 専用。secretなし
+│   │   │   ├── e2e-auth-gate.ts       # localhost E2E専用。本番では閉じる
 │   │   │   └── session-adapter.ts
 │   │   ├── db/
 │   │   │   ├── drizzle.ts
@@ -214,7 +217,8 @@ Tango/
 │   ├── e2e/
 │   │   ├── auth.setup.ts
 │   │   ├── word-learning.spec.ts
-│   │   └── fixtures.ts
+│   │   ├── fixtures.ts
+│   │   └── dev.vars.ci                # localhost E2Eのダミーsecret。本番ではない
 │   ├── workers/
 │   │   └── dispatch-worker.ts         # Start仮想moduleを避けたWorkers test entry
 │   ├── setup/
@@ -375,3 +379,4 @@ composition-root -> application + infrastructure
 - 2026-08-24 T12で Workers AI semantic judge adapter、ai-judge-limits/prompt、contract/eval test を追加
 - 2026-08-24 T13で summarize-study-session と終了結果UIを追加。別の `/history` route は作らない
 - 2026-08-25 T14で mastery-card-color を追加。カード色CSSは styles.css に残す
+- 2026-08-25 T15で ci.yml、Playwright E2E、e2e-auth-gate、TEST_TRACEABILITY / RELEASE_GATE を追加。deploy.yml はまだ作らない

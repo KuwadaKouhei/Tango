@@ -7,6 +7,14 @@
     "vite.config.ts",
     "vitest.config.ts"
   ],
+  "exclude": [
+    "tests/e2e",
+    "playwright.config.ts",
+    "node_modules",
+    "dist",
+    ".wrangler",
+    ".output"
+  ],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",

@@ -24,6 +24,27 @@ describe('private API auth', () => {
   })
 })
 
+describe('E2E email auth gate', () => {
+  it('本番相当のhttpsでは email signup を開かない', async () => {
+    const response = await fetchWorker('/api/auth/sign-up/email', {
+      method: 'POST',
+      headers: {
+        origin: 'https://tango.test',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'E2E',
+        email: 'e2e@example.com',
+        password: 'e2e-password-12',
+      }),
+    })
+
+    expect(response.status).toBeGreaterThanOrEqual(400)
+    const body = await response.text()
+    expect(body).not.toMatch(/e2e-password-12/u)
+  })
+})
+
 describe('Better Auth routes', () => {
   it('Googleログイン開始はHonoが扱い、CookieはHttpOnlyとSameSite=Laxになる', async () => {
     const response = await fetchWorker('/api/auth/sign-in/social', {
