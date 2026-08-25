@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import type { StudyAnswerResult } from '../api/study-schemas'
+import type { StudyAnswerResult as StudyAnswerPayload } from '../api/study-schemas'
 import { resolvePlannedCount } from '../domain/planned-count'
-import { STUDY_LIMITS } from '../domain/study-limits'
+import type { StudySessionItem } from '../domain/summarize-study-session'
 import type { StudyCountChoice, StudyMode } from '../domain/study-limits'
+import { STUDY_LIMITS } from '../domain/study-limits'
 import type { StudyQuestion } from '../domain/study-question'
-import { describeAnswerJudgement } from './describe-answer-judgement'
+import { describeAnswerResultAnnouncement } from './describe-answer-result-announcement'
 import { requestAnswer } from './request-answer'
 import { requestHint } from './request-hint'
 import { requestNextQuestion } from './request-next-question'
+import { StudyAnswerResult } from './study-answer-result'
+import { StudySessionSummary } from './study-session-summary'
 
 export type StudySessionSearch = {
   mode: StudyMode
@@ -20,7 +23,6 @@ type SessionStatus = 'loading' | 'empty' | 'question' | 'finished' | 'error'
 export function StudySession({ mode, count }: StudySessionSearch) {
   const [status, setStatus] = useState<SessionStatus>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [ownedWordCount, setOwnedWordCount] = useState(0)
   const [plannedCount, setPlannedCount] = useState(0)
   const [shownCount, setShownCount] = useState(0)
   const [excludeWordIds, setExcludeWordIds] = useState<string[]>([])
@@ -29,7 +31,10 @@ export function StudySession({ mode, count }: StudySessionSearch) {
   const [isHintPending, setIsHintPending] = useState(false)
   const [answerDraft, setAnswerDraft] = useState('')
   const [isAnswerPending, setIsAnswerPending] = useState(false)
-  const [lastResult, setLastResult] = useState<StudyAnswerResult | null>(null)
+  const [lastResult, setLastResult] = useState<StudyAnswerPayload | null>(null)
+  const [sessionItems, setSessionItems] = useState<StudySessionItem[]>([])
+  const nextActionRef = useRef<HTMLButtonElement>(null)
+  const summaryHeadingRef = useRef<HTMLHeadingElement>(null)
 
   const loadQuestion = async (excluded: readonly string[]) => {
     setStatus('loading')
@@ -38,6 +43,9 @@ export function StudySession({ mode, count }: StudySessionSearch) {
     setAnswerDraft('')
     setLastResult(null)
     setIsAnswerPending(false)
+    if (excluded.length === 0) {
+      setSessionItems([])
+    }
 
     const result = await requestNextQuestion({
       mode,
@@ -54,7 +62,6 @@ export function StudySession({ mode, count }: StudySessionSearch) {
       return
     }
 
-    setOwnedWordCount(result.page.ownedWordCount)
     const nextPlanned = resolvePlannedCount(count, result.page.ownedWordCount)
     setPlannedCount(nextPlanned)
 
@@ -72,6 +79,18 @@ export function StudySession({ mode, count }: StudySessionSearch) {
   useEffect(() => {
     void loadQuestion([])
   }, [mode, count])
+
+  useEffect(() => {
+    if (lastResult) {
+      nextActionRef.current?.focus()
+    }
+  }, [lastResult])
+
+  useEffect(() => {
+    if (status === 'finished') {
+      summaryHeadingRef.current?.focus()
+    }
+  }, [status])
 
   const showNext = () => {
     if (!question) {
@@ -127,6 +146,14 @@ export function StudySession({ mode, count }: StudySessionSearch) {
       return
     }
 
+    setSessionItems((current) => [
+      ...current,
+      {
+        wordId: result.result.wordId,
+        term: question.term,
+        isCorrect: result.result.isCorrect,
+      },
+    ])
     setLastResult(result.result)
   }
 
@@ -146,19 +173,10 @@ export function StudySession({ mode, count }: StudySessionSearch) {
 
   if (status === 'finished') {
     return (
-      <section>
-        <h1>今回の出題は終わりました</h1>
-        <p>
-          {ownedWordCount === 0
-            ? '出題できる単語がありませんでした。'
-            : `${String(plannedCount)}問を出題しました。`}
-        </p>
-        <p>
-          <Link to="/study">設定へ戻る</Link>
-          {' / '}
-          <Link to="/words">一覧へ</Link>
-        </p>
-      </section>
+      <StudySessionSummary
+        items={sessionItems}
+        headingRef={summaryHeadingRef}
+      />
     )
   }
 
@@ -167,6 +185,11 @@ export function StudySession({ mode, count }: StudySessionSearch) {
       <h1>テスト</h1>
       {status === 'loading' ? <p>読み込み中…</p> : null}
       {errorMessage ? <p role="alert">{errorMessage}</p> : null}
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {lastResult && question
+          ? describeAnswerResultAnnouncement(question.term, lastResult)
+          : ''}
+      </p>
 
       {status === 'error' ? (
         <p>
@@ -211,6 +234,7 @@ export function StudySession({ mode, count }: StudySessionSearch) {
 
           {lastResult === null ? (
             <form
+              aria-busy={isAnswerPending}
               onSubmit={(event) => {
                 event.preventDefault()
                 void submitAnswer()
@@ -243,30 +267,13 @@ export function StudySession({ mode, count }: StudySessionSearch) {
               </p>
             </form>
           ) : (
-            <div className="study-result" role="status">
-              <p
-                className={
-                  lastResult.isCorrect ? 'study-correct' : 'study-incorrect'
-                }
-              >
-                {lastResult.isCorrect ? '正解' : '不正解'}
-              </p>
-              <p>判定: {describeAnswerJudgement(lastResult)}</p>
-              <p>あなたの回答: {lastResult.answer}</p>
-              <p>登録した意味</p>
-              <ul>
-                {lastResult.meanings.map((meaning, index) => (
-                  <li key={`${String(index)}:${meaning}`}>{meaning}</li>
-                ))}
-              </ul>
-              <p>
-                <button type="button" onClick={showNext}>
-                  {shownCount >= plannedCount ? '終了する' : '次の問題へ'}
-                </button>
-                {' / '}
-                <Link to="/study">やめる</Link>
-              </p>
-            </div>
+            <StudyAnswerResult
+              term={question.term}
+              result={lastResult}
+              isLastQuestion={shownCount >= plannedCount}
+              onNext={showNext}
+              nextActionRef={nextActionRef}
+            />
           )}
         </>
       ) : null}

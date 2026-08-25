@@ -551,7 +551,8 @@ T10時点の意図的な限定:
 - T09は出題とヒントまで。回答の判定APIはT10で追加した。苦手優先の抽選はT11で追加した。
 - T10のlocal不一致は、DBの `judge_type` が `exact|normalized|ai` しか置けないため、AI portが無いときだけ `normalized` + `isCorrect:false` で保存する。第4のenumは作らない。T13は `!isCorrect && !judgedByAi` を「一致しませんでした」と見せる。
 - 本番の `POST /api/v1/study/answers` は `SemanticJudge` を注入する。exact/normalizedで決着したらAIを呼ばない。不一致時だけ最大1回。通常CIの signed-in harness は live binding を避けるため `null` または mock を渡す。
-- T10の結果UIは正誤・判定段階・登録意味と次問まで。AI利用は `judgedByAi` から「AI判定で正解/不正解」と出す。終了結果の集計画面はT13。
+- T10の結果UIは正誤・判定段階・登録意味と次問まで。AI利用は `judgedByAi` から明示する。
+- T13の終了結果はクライアントが今回の判定応答から算出する。`test_sessions` も別URLの終了画面も作らない。状態を失わず `/study/session` 上で切り替える。再テスト専用操作は付けない。今回の正解率は切り上げず `Math.floor`。
 - Web layoutのsession読取はStart server function。業務APIはHonoに置き、server functionへドメイン処理を閉じ込めない。
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
@@ -589,4 +590,5 @@ T10時点の意図的な限定:
 - 2026-08-23 T10で `POST /api/v1/study/answers` と local判定を実装。AI adapterはT12。local missの `judge_type` は逸脱節を参照
 - 2026-08-24 T11で `weak` の OQ-006 重み付き抽選を実装。random の一様抽選は変えない
 - 2026-08-24 T12で Workers AI JSON Mode の意味判定を結線。model は `@cf/meta/llama-3.1-8b-instruct-fast`。契約外JSONは503
+- 2026-08-24 T13で今回テストの終了結果をクライアント集計で表示。別URLは作らない
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新

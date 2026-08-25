@@ -1,6 +1,6 @@
 # ディレクトリ構造: Tango
 
-> 状態: **T12でWorkers AI意味判定adapterと固定評価セットを追加済み**
+> 状態: **T13で今回テストの終了結果UIを追加済み**
 > 方針: TanStack Startのfile-based routesを守りつつ、プロダクトコードは機能単位、外部詳細はinfrastructureへ分離する。
 
 ## 1. 構造方針
@@ -108,7 +108,8 @@ Tango/
 │   │   │   │   ├── prepare-answer.ts
 │   │   │   │   ├── ai-judge-limits.ts
 │   │   │   │   ├── ai-judge-prompt.ts
-│   │   │   │   └── semantic-judge.ts
+│   │   │   │   ├── semantic-judge.ts
+│   │   │   │   └── summarize-study-session.ts
 │   │   │   ├── application/
 │   │   │   │   ├── get-hint.ts
 │   │   │   │   ├── select-question.ts
@@ -123,7 +124,11 @@ Tango/
 │   │   │   │   ├── request-next-question.ts
 │   │   │   │   ├── request-hint.ts
 │   │   │   │   ├── request-answer.ts
-│   │   │   │   └── describe-answer-judgement.ts
+│   │   │   │   ├── describe-answer-judgement.ts
+│   │   │   │   ├── describe-answer-result-announcement.ts
+│   │   │   │   ├── study-answer-result.tsx
+│   │   │   │   ├── format-study-session-summary.ts
+│   │   │   │   └── study-session-summary.tsx
 │   │   │   └── public.ts
 │   │   └── history/
 │   │       ├── domain/
@@ -168,7 +173,6 @@ Tango/
 │   │       ├── study/
 │   │       │   ├── index.tsx
 │   │       │   └── session.tsx
-│   │       └── history.tsx                 # T13以降
 │   ├── server/
 │   │   ├── api/
 │   │   │   ├── app.ts
@@ -307,9 +311,9 @@ composition-root -> application + infrastructure
 
 ### 6.3 テスト終了画面（OQ-010採用、T13）
 
-1. `test_sessions` は作らない。今回の判定応答をクライアントが保持し、終了画面へ渡す。
-2. `features/study` の結果UIと `src/routes` の終了画面をT13で追加する。
-3. 再テスト操作とsession repositoryは作らない。
+1. `test_sessions` は作らない。今回の判定応答をクライアントが保持し、同じ `/study/session` 上で終了結果へ切り替える。
+2. 別URLの終了画面は作らない。URLへ結果を載せず、リロードで状態は消える。
+3. 再テスト操作とsession repositoryは作らない。一覧へ戻るを必須導線にする。
 
 ### 6.4 単語検索（OQ-010採用、T18）
 
@@ -362,3 +366,4 @@ composition-root -> application + infrastructure
 - 2026-08-23 T10で判定用normalize、answer API、history/public.ts、セッション回答UIを追加。T12 adapterは未作成
 - 2026-08-24 T11で weakness-weight と重み付き抽選を追加。苦手候補queryは words LEFT JOIN test_results
 - 2026-08-24 T12で Workers AI semantic judge adapter、ai-judge-limits/prompt、contract/eval test を追加
+- 2026-08-24 T13で summarize-study-session と終了結果UIを追加。別の `/history` route は作らない
