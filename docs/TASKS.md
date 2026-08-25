@@ -1,7 +1,7 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T14マージ済み。次はT15（CI・E2E・preview release gate）。POC-03/04/06は2026-08-23に配備Workerでlive確認済み。**
-> 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。
+> 状態: **T01〜T18のMVP実装タスクは完了（T15マージ済み）。POC-03/04/06は2026-08-23に配備Workerでlive確認済み。残作業は OQ-012（未決）、POC-05 live、Workers preview再配備。OQ-011は将来。**
+> 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。新しい実装タスクは REQUIREMENTS / DESIGN を先に更新してから本表へ追加する。
 
 ## 1. 進め方
 
@@ -35,7 +35,7 @@
 | T12 | AI意味判定fallback | AC-008,009 | T10 | OQ-002,003,015（決定済み）。model IDはPOC-05でlock | `cursor/t12-ai-judgement-4bb7` | ✅マージ済み |
 | T13 | 回答結果・次問題・テスト終了 | AC-005〜009,015 | T09,T10,T12 | OQ-005,010（決定済み） | `cursor/t13-answer-result-4bb7` | ✅マージ済み |
 | T14 | 正解率カード色とアクセシビリティ | AC-010,011 | T10,T11 | OQ-007（決定済み） | `cursor/t14-mastery-visuals-4bb7` | ✅マージ済み |
-| T15 | CI・E2E・preview release gate | AC-001〜015 | T02〜T14,T18 | OQ-012は未決のままSLO固定しない。OQ-017は決定済み | `cursor/t15-release-gate-4bb7` | 🟡PR中 |
+| T15 | CI・E2E・preview release gate | AC-001〜015 | T02〜T14,T18 | OQ-012は未決のままSLO固定しない。OQ-017は決定済み | `cursor/t15-release-gate-4bb7` | ✅マージ済み |
 
 ## 3. タスク詳細
 
@@ -359,3 +359,4 @@ OQ-010のうち重複誘導UI、間違い再テスト、AI手動修正は未採�
 - 2026-08-24 T13をPR中へ更新
 - 2026-08-25 T13をマージ済みへ更新。T14をPR中へ更新
 - 2026-08-25 T14をマージ済みへ更新。T15をPR中へ更新。OQ-012は未決のまま
+- 2026-08-25 T15をマージ済みへ更新。MVP実装タスク T01〜T18 は完了。次の実装は人間が残作業を選んでから新IDを追加する
