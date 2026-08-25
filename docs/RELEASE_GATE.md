@@ -25,6 +25,21 @@ E2Eは `tests/e2e/dev.vars.ci` のダミー値を `.dev.vars` へコピーして
 |---|---|
 | Git | `.dev.vars` / `.env` / 本番secretはcommitしない。CIのE2Eはダミーのみ |
 | 変数名 | `BETTER_AUTH_SECRET`、`GOOGLE_CLIENT_ID`、`GOOGLE_CLIENT_SECRET`、`DEEPL_AUTH_KEY`。E2E専用 `E2E_AUTH_SECRET` は本番Workerに置かない |
+
+### 2.1 実施記録（2026-08-25）
+
+値は見ていない。名前と追跡状態だけ確認した。
+
+| 確認 | 結果 |
+|---|---|
+| Git の `.dev.vars` / `.env` | `.gitignore` 済み。tracked ではない。履歴にも無い |
+| tracked の例示 | `.dev.vars.example` は `replace-me`。`tests/e2e/dev.vars.ci` は CI 用ダミー。本番secretではない |
+| `wrangler.jsonc` の `vars` | `BETTER_AUTH_URL` のみ。`E2E_AUTH_SECRET` を置いた履歴も無い |
+| GitHub Actions | `deploy.yml` は無い。E2E は CI runner 上で `tests/e2e/dev.vars.ci` を `.dev.vars` へコピーするだけ |
+| コードの門 | `isLocalE2eAuthEnabled` は `E2E_AUTH_SECRET` あり、かつ `http://localhost` または `http://127.0.0.1` のときだけ開く。本番 `https://tango.eitango.workers.dev` では開かない |
+| 本番 Worker の secret 名一覧 | **未実施**。Cloud Agent に Cloudflare token が無い。手元で `pnpm exec wrangler secret list` を実行し、名前に `E2E_AUTH_SECRET` が無いか確認する。値は貼らない |
+
+`E2E_AUTH_SECRET` が本番に乗っていたら `pnpm exec wrangler secret delete E2E_AUTH_SECRET` で消す。値はチャットへ貼らない。
 | 翻訳 | DeepL API Free。通常CIとE2Eは live call しない |
 | AI | Workers Free の neuron。通常CIは live call しない。model は `@cf/meta/llama-3.1-8b-instruct-fast` |
 | log | 公開errorにSQL/stack/provider本文/secretを出さない。回答・意味・prompt全文は既定logへ出さない |
@@ -82,3 +97,4 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 - 2026-08-25 OQ-012の規模を決定（同時1〜5、単語100、履歴50）。p95は未決
 - 2026-08-25 OQ-012のp95目安を約2秒として決定。翻訳・AI判定は対象外。CIゲートは作らない
 - 2026-08-25 人間が `docs/REQUIREMENTS.md` をレビュー済みへ更新
+- 2026-08-25 Git上の `.dev.vars` 非commitと `wrangler.jsonc` に `E2E_AUTH_SECRET` が無いことを確認。本番 Worker の secret 名一覧は手元確認待ち
