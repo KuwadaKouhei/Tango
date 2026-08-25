@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。T15入り Worker 再配備と smoke は 2026-08-25 に人間が実施。POC-05 liveは一部実施（`issue-synonym` が期待外れ）。残る未決は OQ-012。OQ-011は将来。model差し替えは人間判断待ち。
+> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。T15入り Worker 再配備は 2026-08-25。POC-05 liveは条件付き合格（`issue-synonym` 外れをMVP許容）。残る未決は OQ-012。OQ-011は将来。
 
 ## 最優先ルール
 
@@ -127,6 +127,6 @@
 - OQ-001/015: 2026-08-23再決定。DeepL API Free、Workers Free。secret名は `DEEPL_AUTH_KEY`。
 - OQ-002/003/004/005/006/007/010: 2026-08-23決定済み。詳細は `docs/OPEN_QUESTIONS.md` 3節。
 - T01〜T18: マージ済み。MVP実装タスクは完了。
-- POC-03/04/06: 2026-08-23に配備Workerでlive確認済み。POC-05はコード側合格、liveは2026-08-25に一部実施（`issue-synonym` 期待外れ）。
+- POC-03/04/06: 2026-08-23に配備Workerでlive確認済み。POC-05はコード側合格、liveは2026-08-25に条件付き合格（`issue-synonym` 外れをMVP許容）。
 - 残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。T12の model ID は `@cf/meta/llama-3.1-8b-instruct-fast`。
 - 各タスク前: TASKSの意思決定列にあるOQ。

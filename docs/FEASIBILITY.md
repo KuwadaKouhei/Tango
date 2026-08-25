@@ -1,7 +1,7 @@
 # 実現可能性調査: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **条件付きで実現可能。POC-01〜04とPOC-06は合格。翻訳はOQ-001再決定でDeepL API Free。POC-05はコード側合格、live品質は2026-08-25に一部実施（同義1件が期待外れ）。**
+> 状態: **条件付きで実現可能。POC-01〜04とPOC-06は合格。翻訳はOQ-001再決定でDeepL API Free。POC-05はコード側合格、liveは同義1件の外れをMVPで許容（2026-08-25）。**
 > 主要技術は公式ドキュメントとnpmレジストリの当日スナップショットで確認した。バージョンと料金は実装開始時・本番公開前に再確認する。
 
 ## 1. 概要・調査範囲
@@ -24,7 +24,7 @@
 | Drizzle + D1 | 実現可能 | DrizzleがD1 driverとWorkers環境を公式サポート |
 | ユーザー分離・単語CRUD・複数意味 | 実現可能 | RDBのFK、API所有者スコープ、D1 batchで整合性を持たせられる |
 | 完全一致・正規化一致 | 実現可能 | TypeScriptの決定的な純粋関数で実装・単体テスト可能 |
-| AI意味判定 | 条件付き可能 | 提供者はWorkers AI。model は `@cf/meta/llama-3.1-8b-instruct-fast`。live品質はPOC-05人手確認 |
+| AI意味判定 | 条件付き可能 | 提供者はWorkers AI。model は `@cf/meta/llama-3.1-8b-instruct-fast`。同義は外れることがある（POC-05 live、MVP許容） |
 | 翻訳候補 | 実現可能 | DeepL API Freeを採用。候補1件。2026-08-23に配備環境でlive品質を人手確認 |
 | ランダム／苦手優先出題 | 実現可能 | 出題数・重複・重みはOQ-005/006で決定済み |
 | 履歴・正解率・カード色 | 実現可能 | 色式はOQ-007。T14でHSL線形補間とWCAG AA本文色を実装 |
@@ -124,22 +124,22 @@
 | POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 **合格**（2026-08-20: healthは JSON `{"status":"ok"}`、未知APIはJSON 404、`/` はHTML） |
 | POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live合格**（2026-08-23: 配備Workerでlogin、callback、session復元、logout、再login） |
 | POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 **コード側合格**（2026-08-20: CHECK、複合owner FK、batch rollback、履歴ありRESTRICT、2ユーザー隔離）。**live合格**（2026-08-23: remote D1へ同一migrationを適用し、OAuth/sessionとCRUDを確認） |
-| POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T12。提供者はWorkers AI。model は `@cf/meta/llama-3.1-8b-instruct-fast`。**コード側合格**（2026-08-24: JSON Mode schema、contract mock、固定評価セットはlocal不一致）。**live一部**（2026-08-25: 下表。p95未計測。差し替えは未決） |
+| POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T12。提供者はWorkers AI。model は `@cf/meta/llama-3.1-8b-instruct-fast`。**コード側合格**（2026-08-24）。**live条件付き合格**（2026-08-25: `issue-synonym` 外れをMVP許容。p95未計測。model/promptは据え置き） |
 | POC-06 翻訳候補 | 代表単語セットで候補品質、遅延、料金を比較 | T08でWorkers AIを実装。preview品質不足により **T17でDeepLへ差し替え**。**live合格**（2026-08-23: 配備WorkerでDeepL候補1件、翻訳だけでは未保存） |
 
-#### POC-05 live（2026-08-25 一部）
+#### POC-05 live（2026-08-25 条件付き合格）
 
 配備Worker、model `@cf/meta/llama-3.1-8b-instruct-fast`、prompt `tango-judge-v1`。人間実施。固定セットの定義は `tests/eval/ai-judge.eval.test.ts`。回答本文はここへ再掲しない。
 
 | ケース | 公式セットか | 期待 | 結果 |
 |---|---|---|---|
-| `issue-synonym` | 公式 | 正解 | AI不正解 |
+| `issue-synonym` | 公式 | 正解 | AI不正解。**MVPで許容**（2026-08-25 利用者決定） |
 | child の短い登録意味と長い回答 | 公式外（公式は `child-kana-kanji`） | なし | AI正解 |
-| `issue-unrelated` | 公式 | 不正解 | 未実施 |
-| `child-kana-kanji` | 公式 | 正解 | 未実施 |
-| `computer-long-vowel` | 公式 | 正解 | 未実施 |
+| `issue-unrelated` | 公式 | 不正解 | 未実施。blockerにしない |
+| `child-kana-kanji` | 公式 | 正解 | 未実施。blockerにしない |
+| `computer-long-vowel` | 公式 | 正解 | 未実施。blockerにしない |
 
-`tango-judge-v1` は同義を match する指示を含む。それでも `issue-synonym` は外れた。model/prompt の差し替えは人間が決めるまで行わない。p95と構造化失敗率は未計測。
+`tango-judge-v1` は同義を match する指示を含む。それでも `issue-synonym` は外れた。model と prompt は差し替えない。p95と構造化失敗率は未計測。
 
 ## 6. 技術比較と推奨
 
@@ -158,7 +158,7 @@
 
 ## 8. 差し戻し提案
 
-困難判定はないため要件全体の差し戻しは不要。残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。POC-05 liveの `issue-synonym` 外れを不合格とみなすなら、AI判定のmodelまたはpromptを要件フェーズへ差し戻す。
+困難判定はないため要件全体の差し戻しは不要。残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。POC-05 の `issue-synonym` 外れは 2026-08-25 にMVP許容としたため、model/promptの差し戻しはしない。
 
 ## 9. 更新履歴
 
@@ -176,3 +176,4 @@
 - 2026-08-25 T15でGitHub ActionsとPlaywright E2Eを追加。OQ-012のSLOは未決
 - 2026-08-25 人間が T15入り Worker を再配備し smoke 完了を報告。POC-05 liveは未実施
 - 2026-08-25 POC-05 liveを一部実施。`issue-synonym` は期待の正解に対しAI不正解。公式セットの残りは未実施。差し替えは未決
+- 2026-08-25 利用者が `issue-synonym` 外れをMVP許容。POC-05 liveは条件付き合格。model/promptは据え置き

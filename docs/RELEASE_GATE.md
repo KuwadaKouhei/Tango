@@ -56,7 +56,7 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 | 2026-08-23 | 当時の配備Worker | POC-03/04/06 live | 合格。POC-05 liveは未実施 |
 | 2026-08-25 | T15マージ後の `main` を `https://tango.eitango.workers.dev` へ `wrangler deploy` | RELEASE_GATE 4節の smoke（login、CRUD、検索、exact 1問、統計） | 人間が完了を報告。Cloud Agent は Google 動線を直接観察していない。翻訳とAIの live は増やしていない |
 
-`0000`〜`0003` は 2026-08-23 に remote D1 へ適用済み。T15再配備で新しい migration は無い。POC-05 liveは 2026-08-25 に一部実施（`docs/FEASIBILITY.md`）。公式セットの残りと差し替え判断は未了。
+`0000`〜`0003` は 2026-08-23 に remote D1 へ適用済み。T15再配備で新しい migration は無い。POC-05 liveは 2026-08-25 に条件付き合格（`issue-synonym` 外れをMVP許容。`docs/FEASIBILITY.md`）。
 
 ## 5. OQ-012
 
@@ -72,3 +72,4 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 - 2026-08-25 T15マージ済み。OQ-012とpreview再配備・POC-05 liveは残作業
 - 2026-08-25 人間が T15入り `main` を `tango.eitango.workers.dev` へ再配備し smoke 完了を報告。POC-05 liveとOQ-012は残作業
 - 2026-08-25 POC-05 live一部。`issue-synonym` はAI不正解。差し替えは未決
+- 2026-08-25 `issue-synonym` 外れをMVP許容。model/promptは据え置き

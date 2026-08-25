@@ -193,7 +193,7 @@ AI意味判定の提供者は **Workers AI**。利用者決定。翻訳（DeepL�
 | 項目 | 確定値 |
 |---|---|
 | provider | Workers AI（binding `AI`） |
-| model ID | **`@cf/meta/llama-3.1-8b-instruct-fast`**。公式 JSON Mode 対応の instruct。Workers Free と 8 秒 timeout に合わせ 8B を選んだ。live 品質は POC-05 人手確認 |
+| model ID | **`@cf/meta/llama-3.1-8b-instruct-fast`**。公式 JSON Mode 対応の instruct。Workers Free と 8 秒 timeout に合わせ 8B を選んだ。live 品質は POC-05 人手確認。2026-08-25 に `issue-synonym` の外れを **MVPで許容** し、model/prompt は差し替えない |
 | 入力 | 英単語、登録意味、回答のみ。profile / session / OAuth / hint / 履歴は送らない |
 | 出力 | boolean の意味一致。Zodで検証する |
 | timeout | 8秒（wall clock、AbortSignal） |
@@ -202,6 +202,10 @@ AI意味判定の提供者は **Workers AI**。利用者決定。翻訳（DeepL�
 | CI | 通常CIは live call しない。contract mock と固定評価セット |
 
 prompt本文と `prompt_version`（`tango-judge-v1`）はT12で固定し、AI結果行へ保存する。品質が不足したらportのままadapterを差し替える。
+
+#### POC-05 live（2026-08-25）
+
+配備Workerで `issue-synonym` が期待の正解に対し AI 不正解になった。利用者はこれを **MVPで許容** し、model と `tango-judge-v1` は差し替えない。同義の一致は保証しない。公式セットの残り（`issue-unrelated`、`child-kana-kanji`、`computer-long-vowel`）は未実施のまま blocker にしない。
 
 ### OQ-003（2026-08-23）
 
@@ -257,3 +261,4 @@ Cloudflareの料金プランは **Workers Free** とする。利用者決定。
 - 2026-08-25 T15マージ。MVP実装タスクは完了。残未決は OQ-011（将来）と OQ-012（本番公開判定前）
 - 2026-08-25 T15入り Worker 再配備と smoke を人間実施済みと記録。POC-05 liveは未実施
 - 2026-08-25 POC-05 live一部。`issue-synonym` は期待の正解に対しAI不正解。差し替えは未決
+- 2026-08-25 利用者が `issue-synonym` の外れをMVPで許容。model/promptは差し替えない
