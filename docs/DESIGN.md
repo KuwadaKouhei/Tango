@@ -561,6 +561,7 @@ T10時点の意図的な限定:
 - Workers AI bindingは翻訳では使わない。T12の `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDは `@cf/meta/llama-3.1-8b-instruct-fast`。prompt versionは `tango-judge-v1`。
 - wrangler 生成の `AiModels` はこの model ID をまだ含まないため、composition-rootは狭い `run` 口へ委譲する。`wrangler.test.jsonc` には `ai` binding を足さない。
 - T15のE2EはGoogle OAuthをlive callしない。`E2E_AUTH_SECRET` と localhost の `BETTER_AUTH_URL` が揃ったときだけ Better Auth の email/password を開き、Playwrightがsession cookieを保存する。ログイン画面はGoogleのまま。本番httpsでは門を閉じる。
+- E2Eの `vite dev` は `E2E=true` で Cloudflare Vite plugin の `remoteBindings` を閉じる。Workers AI remote proxy は API token が要るためCIでは使わない。exact一致のE2EはAIを呼ばない。
 
 ## 10. 未決事項
 

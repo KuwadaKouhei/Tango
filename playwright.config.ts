@@ -9,16 +9,21 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
+  timeout: 90_000,
   use: {
     baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'pnpm db:migrate:local && pnpm dev',
+    command: 'rm -rf .wrangler/state && pnpm db:migrate:local && pnpm dev',
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 120_000,
+    env: {
+      ...process.env,
+      E2E: 'true',
+    },
   },
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/u },
