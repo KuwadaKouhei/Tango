@@ -3,7 +3,7 @@
 このファイルはコーディングエージェント（Claude Code / Codex等）が作業前に読むプロジェクト基準である。
 `CLAUDE.md`と`AGENTS.md`は同一内容で運用し、片方を変えたら同じ変更でもう片方も更新する。
 
-> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。残る未決は OQ-012（本番規模・SLO）。OQ-011は将来。POC-05 live品質とWorkers preview再配備は人手確認が残る。
+> 現在地: T15マージ済み。T01〜T18のMVP実装タスクは完了。公開repositoryは `https://github.com/KuwadaKouhei/Tango`。残る未決は OQ-012（本番規模・SLO）。OQ-011は将来。2026-08-25に `https://tango.eitango.workers.dev` のclient bundleが現行mainと一致。secret/migration確認・Google smokeとPOC-05 live品質は人手。
 
 ## 最優先ルール
 
@@ -128,5 +128,6 @@
 - OQ-002/003/004/005/006/007/010: 2026-08-23決定済み。詳細は `docs/OPEN_QUESTIONS.md` 3節。
 - T01〜T18: マージ済み。MVP実装タスクは完了。
 - POC-03/04/06: 2026-08-23に配備Workerでlive確認済み。POC-05はコード側合格、live未実施。
+- preview: 2026-08-25に live Worker のclient bundleが現行mainと一致。secret/migration確認とGoogle smokeは人手（`docs/RELEASE_GATE.md` 4節）。
 - 残未決は OQ-011（Chrome拡張）と OQ-012（本番規模）。T12の model ID は `@cf/meta/llama-3.1-8b-instruct-fast`。
 - 各タスク前: TASKSの意思決定列にあるOQ。

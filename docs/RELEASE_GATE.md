@@ -1,6 +1,6 @@
 # リリースゲート（T15）
 
-> 状態: **T15マージ済み。CIとE2Eは自動化。Workers previewへの再配備はこの環境では未実施。**
+> 状態: **T15マージ済み。CIとE2Eは自動化。2026-08-25に `https://tango.eitango.workers.dev` のclient bundleが現行mainと一致することを確認。このCloud Agent環境では wrangler 認証がないため、secret/migration確認とGoogle smokeは人手。**
 > OQ-012（本番規模・SLO）は未決のまま固定しない。本番公開判定の前に人間が決める。
 
 ## 1. 自動化した条件
@@ -41,15 +41,88 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 
 ## 4. preview 配備手順（人手）
 
-このCloud Agent環境には Cloudflare 配備tokenがないため、T15では remote preview を再実行していない。人間が次を同じconfigで行う。
+Worker名は `tango`。公開URLは `https://tango.eitango.workers.dev`。`wrangler.jsonc` の vars は `BETTER_AUTH_URL` だけ。secret値はチャット・Git・logへ出さない。
 
-1. 本番と同じ `wrangler.jsonc` と `drizzle/` を使う。
-2. secretはWorkers secretへ。`wrangler.jsonc` の vars には `BETTER_AUTH_URL` だけ。
-3. `pnpm build` のあと `pnpm exec wrangler deploy`（または運用で決めた preview コマンド）。
-4. remote D1へ未適用migrationがあれば `wrangler d1 migrations apply tango --remote`。
-5. smoke: Google login、単語CRUD、検索、テスト1問（exact）、一覧統計。翻訳とAIは既存POCを再利用し、通常は live を増やさない。
+このCloud Agent環境には `CLOUDFLARE_API_TOKEN` も wrangler login もない。`wrangler whoami` は未認証。`pnpm deploy` と remote D1操作は人間のマシンで行う。
+
+### 4.1 2026-08-25 の確認結果（この環境）
+
+| 確認 | 結果 |
+|---|---|
+| `GET /api/v1/health` | 200 `{"status":"ok"}` |
+| `GET /` | 307 `/login` |
+| `GET /login` | 200 HTML。Googleログイン導線あり |
+| `GET /api/v1/words`（未認証） | 401 `UNAUTHENTICATED` |
+| `POST /api/v1/study/questions`（Originなし） | 403 `ORIGIN_NOT_ALLOWED` |
+| `POST /api/v1/translation-candidates`（Originなし） | 403 `ORIGIN_NOT_ALLOWED` |
+| client asset | 現行mainの `pnpm build` と同一hash（`styles-Du0Xgb0F.css`、`index-PLRhwB41.js`、`study-BzhTj1fV.js`、`words-v_TwXIE1.js`、`login-DT3xAY2Y.js`） |
+| `pnpm exec wrangler deploy --dry-run` | 成功。bindingは D1 `tango`、AI、`BETTER_AUTH_URL` |
+| `wrangler whoami` / `secret list` / remote migration list | この環境では不可 |
+
+コードの再uploadは必須ではない。残る人手は secret名の確認、remote D1の適用状態、Googleログインからのsmoke。念のため最新を載せ直すなら 4.3 の `pnpm deploy` を実行する。
 
 2026-08-23 の配備Workerで POC-03/04/06 は live 合格済み。POC-05 live品質は未実施のまま。
+
+### 4.2 準備（人間のマシン）
+
+1. 最新 `main` を取る。Node は 22.13.0 以上（CIは 22.17.1）。pnpm は 11.22.0。
+2. `pnpm install --frozen-lockfile`
+3. Google Cloud Console に Authorized redirect URI `https://tango.eitango.workers.dev/api/auth/callback/google` があることだけ確認する。client secretの値は貼らない。
+4. Cloudflare にログインできること。`pnpm exec wrangler whoami` がアカウントを返すこと。
+
+Workers secret に次の**名前**があること。無ければ `pnpm exec wrangler secret put <NAME>` で入れる。値は標準入力または対話。チャットへ貼らない。
+
+| 置く | 置かない |
+|---|---|
+| `BETTER_AUTH_SECRET` | `E2E_AUTH_SECRET`（本番Worker禁止） |
+| `GOOGLE_CLIENT_ID` | `wrangler.jsonc` の vars への OAuth / DeepL |
+| `GOOGLE_CLIENT_SECRET` | |
+| `DEEPL_AUTH_KEY` | |
+
+確認コマンド（名前だけ出る）:
+
+```bash
+pnpm exec wrangler whoami
+pnpm exec wrangler secret list
+```
+
+### 4.3 D1 と配備
+
+```bash
+pnpm exec wrangler d1 migrations list tango --remote
+```
+
+remote D1 は 2026-08-23 に `0000`〜`0003` を適用済み。未適用がなければ `apply` しない。あれば:
+
+```bash
+pnpm exec wrangler d1 migrations apply tango --remote
+```
+
+`drizzle push` は使わない。適用済みSQLは改変しない。
+
+再配備する場合:
+
+```bash
+pnpm deploy
+```
+
+これは `pnpm run build && wrangler deploy`。成功したら URL が `https://tango.eitango.workers.dev` と出る。失敗したら Worker は `wrangler rollback`、schemaは `docs/DATABASE.md` 9節の Time Travel または逆SQL。
+
+### 4.4 smoke（ブラウザ。翻訳とAIの live は増やさない）
+
+対象: `https://tango.eitango.workers.dev`
+
+1. 未認証で `/` を開く → `/login` へ誘導される。
+2. Googleでログイン → 単語一覧へ進む。
+3. 単語を登録する（意味2件、hintは任意）。
+4. 一覧に出る。検索欄で見出しまたは意味の一部を入れてヒットする。
+5. 編集して保存し、一覧に反映される。
+6. テストを random・5問で開始し、登録意味と exact 一致する回答を1問送る。正誤と登録意味が出る。
+7. 一覧の正解数/回答数が更新される。
+8. ログアウトし、再ログインできる。
+9. 削除する場合は確認ダイアログのあと、一覧から消える。
+
+翻訳候補とAI判定は既存POCを再利用する。通常のsmokeでは live を増やさない。AI判定の品質記録は POC-05（次の残作業）で行う。
 
 ## 5. OQ-012
 
@@ -63,3 +136,4 @@ rollbackの正本は `docs/DATABASE.md` 9節。コードrevertでWorkerを戻し
 
 - 2026-08-25 T15初版。CI/E2Eを自動化。preview再配備は人手手順のみ
 - 2026-08-25 T15マージ済み。OQ-012とpreview再配備・POC-05 liveは残作業
+- 2026-08-25 live Workerのclient bundleが現行mainと一致することを確認。secret/migration/Google smokeの人手手順を4節へ展開
