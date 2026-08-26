@@ -1,7 +1,7 @@
 # 実現可能性調査: Tango MVP
 
 > 調査日: 2026-08-20
-> 状態: **条件付きで実現可能。POC-01〜04とPOC-06は合格。翻訳はOQ-001再決定でDeepL API Free。POC-05はコード側合格、live品質は未実施。**
+> 状態: **条件付きで実現可能。POC-01〜04とPOC-06は合格。翻訳はOQ-001再決定でDeepL API Free。preview smokeは2026-08-26に人間が成功を報告。POC-05はコード側合格、live品質は未実施。**
 > 主要技術は公式ドキュメントとnpmレジストリの当日スナップショットで確認した。バージョンと料金は実装開始時・本番公開前に再確認する。
 
 ## 1. 概要・調査範囲
@@ -124,7 +124,7 @@
 | POC-02 Hono共存 | `/api/v1/health` はHono、それ以外はStartが処理し、404/例外形式が混線しない | T01 **合格**（2026-08-20: healthは JSON `{"status":"ok"}`、未知APIはJSON 404、`/` はHTML） |
 | POC-03 Better Auth + Google + D1 | login、callback、session、logout、再ログインがpreview環境で通る | T02 **コード側合格**（2026-08-20: 未認証401、`/api/auth/*` がHono、CookieはHttpOnly/SameSite=Lax）。**live合格**（2026-08-23: 配備Workerでlogin、callback、session復元、logout、再login） |
 | POC-04 Drizzle migration | ローカルD1とpreview D1に同一migrationを適用し、FKとbatch rollbackを確認 | T03 **コード側合格**（2026-08-20: CHECK、複合owner FK、batch rollback、履歴ありRESTRICT、2ユーザー隔離）。**live合格**（2026-08-23: remote D1へ同一migrationを適用し、OAuth/sessionとCRUDを確認） |
-| POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T12。提供者はWorkers AI。model は `@cf/meta/llama-3.1-8b-instruct-fast`。**コード側合格**（2026-08-24: JSON Mode schema、contract mock、固定評価セットはlocal不一致）。**live未実施** |
+| POC-05 AI意味判定 | 代表的な正解・不正解・曖昧回答の固定評価セットで品質とp95遅延、構造化出力失敗率を記録 | T12。提供者はWorkers AI。model は `@cf/meta/llama-3.1-8b-instruct-fast`。**コード側合格**（2026-08-24: JSON Mode schema、contract mock、固定評価セットはlocal不一致）。**live未実施**（手順は `docs/RELEASE_GATE.md` 5節。通常CIは呼ばない） |
 | POC-06 翻訳候補 | 代表単語セットで候補品質、遅延、料金を比較 | T08でWorkers AIを実装。preview品質不足により **T17でDeepLへ差し替え**。**live合格**（2026-08-23: 配備WorkerでDeepL候補1件、翻訳だけでは未保存） |
 
 ## 6. 技術比較と推奨
@@ -160,3 +160,4 @@
 - 2026-08-24 T12で POC-05 をコード側合格とし、model を `@cf/meta/llama-3.1-8b-instruct-fast` にlock。live品質は未実施
 - 2026-08-25 T14でカード色のHSL線形補間を実装。通常CIは色計算のunit testのみ
 - 2026-08-25 T15でGitHub ActionsとPlaywright E2Eを追加。OQ-012のSLOは未決
+- 2026-08-26 人間が preview smoke 成功を報告。POC-05 live手順を `RELEASE_GATE.md` 5節へ展開。live品質は未実施
