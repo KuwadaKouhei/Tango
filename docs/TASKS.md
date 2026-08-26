@@ -1,6 +1,6 @@
 # 実装タスク一覧（TASKS）
 
-> 状態: **T01〜T18のMVP実装タスクは完了（T15マージ済み）。POC-03/04/06は2026-08-23に配備Workerでlive確認済み。2026-08-25に live Worker のclient bundleが現行mainと一致。残る人手は secret/migration確認とGoogle smoke、POC-05 live。OQ-012は未決。OQ-011は将来。**
+> 状態: **T01〜T18のMVP実装タスクは完了（T15マージ済み）。POC-03/04/06は2026-08-23に配備Workerでlive確認済み。2026-08-26に人間が preview smoke 成功を報告。残る人手は POC-05 live。OQ-012は未決。OQ-011は将来。**
 > 1タスク = 1機能 = 1ブランチ = 1PR。人間がmergeしてから依存する次タスクへ進む。未決事項の期限を越えて勝手なdefaultで実装しない。新しい実装タスクは REQUIREMENTS / DESIGN を先に更新してから本表へ追加する。
 
 ## 1. 進め方
@@ -361,3 +361,4 @@ OQ-010のうち重複誘導UI、間違い再テスト、AI手動修正は未採�
 - 2026-08-25 T14をマージ済みへ更新。T15をPR中へ更新。OQ-012は未決のまま
 - 2026-08-25 T15をマージ済みへ更新。MVP実装タスク T01〜T18 は完了。次の実装は人間が残作業を選んでから新IDを追加する
 - 2026-08-25 live Worker（`https://tango.eitango.workers.dev`）のclient bundleが現行mainと一致することを確認。再uploadは必須ではない。secret/migration/Google smokeは人手（`docs/RELEASE_GATE.md` 4節）
+- 2026-08-26 人間が preview smoke 成功を報告。次の残作業は POC-05 live（`docs/RELEASE_GATE.md` 5節）

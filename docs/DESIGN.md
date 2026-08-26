@@ -557,7 +557,7 @@ T10時点の意図的な限定:
 - `features/auth/public.ts` は client-safe な `authClient` だけを再exportする。`getCurrentSession` を混ぜると `cloudflare:workers` が client bundle へ入る。
 - 翻訳のrate limitはisolate内メモリ。グローバルな正確な上限ではない。
 - 通常CIはDeepLをlive callしない。POC-06の品質確認は2026-08-23に配備Workerで人手実施済み。
-- 通常CIはWorkers AIをlive callしない。POC-05の固定評価セットはcontract mock。live品質は配備Workerでの人手確認（未実施）。
+- 通常CIはWorkers AIをlive callしない。POC-05の固定評価セットはcontract mock。live品質は配備Workerでの人手確認（手順は `docs/RELEASE_GATE.md` 5節。未実施）。
 - Workers AI bindingは翻訳では使わない。T12の `SemanticJudge` adapterが `env.AI.run` を呼ぶ。model IDは `@cf/meta/llama-3.1-8b-instruct-fast`。prompt versionは `tango-judge-v1`。
 - wrangler 生成の `AiModels` はこの model ID をまだ含まないため、composition-rootは狭い `run` 口へ委譲する。`wrangler.test.jsonc` には `ai` binding を足さない。
 - T15のE2EはGoogle OAuthをlive callしない。`E2E_AUTH_SECRET` と localhost の `BETTER_AUTH_URL` が揃ったときだけ Better Auth の email/password を開き、Playwrightがsession cookieを保存する。ログイン画面はGoogleのまま。本番httpsでは門を閉じる。
@@ -569,7 +569,7 @@ T10時点の意図的な限定:
 - 人間が思想3文書を承認済み（OQ-016）。Worker entryのHono/Start分岐はPOC-02で確認済み。
 - T02: Better Auth + Google + D1のコード経路は実装済み。live Googleは2026-08-23に配備Workerで確認済み。
 - T08/T17: 翻訳はDeepL API Free。POC-06のlive確認は2026-08-23に配備Workerで実施済み。
-- T12: Workers AI の model ID は `@cf/meta/llama-3.1-8b-instruct-fast` にlock。POC-05 live品質は未実施。
+- T12: Workers AI の model ID は `@cf/meta/llama-3.1-8b-instruct-fast` にlock。POC-05 live品質は未実施（手順は `docs/RELEASE_GATE.md` 5節）。
 
 ## 11. 更新履歴
 
@@ -596,3 +596,4 @@ T10時点の意図的な限定:
 - 2026-08-25 T14で一覧カード背景をOQ-007のHSL線形補間にし、未回答と0%を文字でも区別する
 - 2026-08-25 T15でCIとPlaywright E2Eを追加。OQ-012は未決のまま。preview再配備は人手手順
 - 2026-08-23 POC-03/04/06を配備Workerでの人手確認によりlive合格へ更新
+- 2026-08-26 人間が preview smoke 成功を報告。POC-05 live手順は `docs/RELEASE_GATE.md` 5節。live品質は未実施
